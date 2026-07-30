@@ -16,3 +16,21 @@ body {
     min-width: 55px;
 
 }
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+@media (max-width: 576px) {
+
+    table th:last-child,
+    table td:last-child {
+
+        position: sticky;
+        right: 0;
+        background: white;
+        z-index: 2;
+
+    }
+
+}

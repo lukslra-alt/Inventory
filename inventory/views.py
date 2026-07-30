@@ -123,6 +123,8 @@ def dashboard(request):
 
         "show_cost": request.user.is_staff,
 
+        "is_admin": request.user.is_staff,
+
     }
 
     return render(
