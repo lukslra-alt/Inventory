@@ -16,7 +16,7 @@ urlpatterns = [
     ),
 
     path(
-        "search-products/",
+        "search_products/",
         views.search_products,
         name="search_products"
     ),

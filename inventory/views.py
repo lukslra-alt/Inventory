@@ -99,6 +99,8 @@ def dashboard(request):
 
         "products": page_obj,
 
+        "page_obj": page_obj,
+
         "category_tree": get_category_tree(),
 
         "search": search,

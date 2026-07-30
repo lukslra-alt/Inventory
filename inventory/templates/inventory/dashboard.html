@@ -24,23 +24,23 @@
     <style>
 
         body {
-            background:#f8f9fa;
+            background: #f8f9fa;
         }
 
 
         .product-card {
-            transition:0.2s;
+            transition: 0.2s;
         }
 
 
         .product-card:hover {
-            transform:scale(1.01);
+            transform: scale(1.01);
         }
 
 
         .category-box {
-            max-height:80vh;
-            overflow-y:auto;
+            max-height: 80vh;
+            overflow-y: auto;
         }
 
 
@@ -59,7 +59,6 @@
     <h4 class="mb-3">
         Inventory
     </h4>
-
 
 
     <div class="row">
@@ -97,14 +96,13 @@
             </div>
 
 
-
             <!-- Mobile button -->
 
             <button
-            class="btn btn-primary d-md-none mb-3"
-            type="button"
-            data-bs-toggle="offcanvas"
-            data-bs-target="#mobileCategories">
+                    class="btn btn-primary d-md-none mb-3"
+                    type="button"
+                    data-bs-toggle="offcanvas"
+                    data-bs-target="#mobileCategories">
 
 
                 ☰ Categories
@@ -113,11 +111,7 @@
             </button>
 
 
-
         </div>
-
-
-
 
 
         <!-- =====================
@@ -128,23 +122,19 @@
         <div class="col-md-9">
 
 
-
             <!-- SEARCH -->
 
             <div class="mb-3">
 
 
                 <input
-                type="text"
-                id="searchBox"
-                class="form-control"
-                placeholder="Search products...">
+                        type="text"
+                        id="searchBox"
+                        class="form-control"
+                        placeholder="Search products...">
 
 
             </div>
-
-
-
 
 
             <!-- PRODUCT LIST -->
@@ -156,8 +146,7 @@
                 <div class="row">
 
 
-                {% for product in products %}
-
+                    {% for product in page_obj %}
 
 
                     <div class="col-12 col-sm-6 col-lg-4 mb-3">
@@ -176,27 +165,24 @@
                                 </h6>
 
 
-
                                 <p class="mb-1">
 
                                     Qty:
                                     <strong>
-                                    {{ product.qty }}
+                                        {{ product.qty }}
                                     </strong>
 
                                 </p>
-
 
 
                                 <p class="mb-1">
 
                                     Price:
                                     <strong>
-                                    {{ product.sales_price }}
+                                        {{ product.sales_price }}
                                     </strong>
 
                                 </p>
-
 
 
                                 {% if show_cost %}
@@ -211,13 +197,11 @@
                                 {% endif %}
 
 
-
                                 <span class="badge bg-secondary">
 
                                     {{ product.status }}
 
                                 </span>
-
 
 
                             </div>
@@ -229,8 +213,7 @@
                     </div>
 
 
-
-                {% empty %}
+                    {% empty %}
 
 
                     <div class="alert alert-warning">
@@ -240,16 +223,68 @@
                     </div>
 
 
-                {% endfor %}
-
+                    {% endfor %}
 
 
                 </div>
+                <nav>
 
+                    <ul class="pagination justify-content-center">
+
+
+                        {% if page_obj.has_previous %}
+
+                        <li class="page-item">
+
+                            <a class="page-link"
+                               href="?category={{ request.GET.category }}&page={{ page_obj.previous_page_number }}">
+
+                                Previous
+
+                            </a>
+
+                        </li>
+
+                        {% endif %}
+
+
+                        <li class="page-item active">
+
+<span class="page-link">
+
+{{ page_obj.number }}
+
+/
+
+{{ page_obj.paginator.num_pages }}
+
+</span>
+
+                        </li>
+
+
+                        {% if page_obj.has_next %}
+
+                        <li class="page-item">
+
+                            <a class="page-link"
+                               href="?category={{ request.GET.category }}&page={{ page_obj.next_page_number }}">
+
+                                Next
+
+                            </a>
+
+                        </li>
+
+                        {% endif %}
+
+
+                    </ul>
+
+                </nav>
 
 
             </div>
-
 
 
         </div>
@@ -258,11 +293,7 @@
     </div>
 
 
-
 </div>
-
-
-
 
 
 <!-- =====================
@@ -284,15 +315,14 @@
 
 
         <button
-        type="button"
-        class="btn-close"
-        data-bs-dismiss="offcanvas">
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="offcanvas">
 
         </button>
 
 
     </div>
-
 
 
     <div class="offcanvas-body category-box">
@@ -307,60 +337,85 @@
 </div>
 
 
-
-
-
 <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
 
 
 <script>
 
 
-const searchBox = document.getElementById("searchBox");
+    const productList = document.getElementById("productList");
+
+searchBox.addEventListener("keyup", function () {
+
+    let query = this.value.trim();
+
+    fetch("{% url 'search_products' %}?q=" + encodeURIComponent(query))
+        .then(response => response.json())
+        .then(data => {
+
+            let html = '<div class="row">';
 
 
-searchBox.addEventListener(
-    "keyup",
-    function(){
+            data.products.forEach(product => {
 
-        let value = this.value.toLowerCase();
+                html += `
+
+                <div class="col-12 col-sm-6 col-lg-4 mb-3">
+
+                    <div class="card product-card h-100">
+
+                        <div class="card-body">
+
+                            <h6 class="card-title">
+                                ${product.name}
+                            </h6>
+
+                            <p class="mb-1">
+                                Qty:
+                                <strong>${product.qty}</strong>
+                            </p>
+
+                            <p class="mb-1">
+                                Price:
+                                <strong>${product.price}</strong>
+                            </p>
+
+                            <span class="badge bg-secondary">
+                                ${product.status}
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                `;
+
+            });
 
 
-        let cards =
-        document.querySelectorAll(
-            ".product-card"
-        );
+            html += "</div>";
 
 
-        cards.forEach(
-            function(card){
+            if (data.products.length === 0) {
 
-                let text =
-                card.innerText.toLowerCase();
-
-
-                if(text.includes(value)){
-
-                    card.parentElement.style.display="";
-
-                }
-
-                else{
-
-                    card.parentElement.style.display="none";
-
-                }
+                html = `
+                <div class="alert alert-warning">
+                    No products found
+                </div>
+                `;
 
             }
-        );
 
 
-    }
-);
+            productList.innerHTML = html;
 
+        });
+
+});
 
 </script>
-
 
 
 </body>

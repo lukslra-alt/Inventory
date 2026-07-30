@@ -4,58 +4,60 @@
 
     {% if key != "products" %}
 
-        <details>
+    <details>
 
-            <summary style="cursor:pointer;">
+        <summary style="cursor:pointer;">
 
-                {% if node.type == "category" %}
+            {% if node.type == "category" %}
 
-                    <a href="?category={{ key }}"
-                       class="text-decoration-none fw-bold text-dark">
-                        {{ key }}
-                    </a>
-
-
-                {% elif node.type == "subcategory" %}
-
-                    <a href="?subcategory={{ key }}"
-                       class="text-decoration-none text-dark">
-                        {{ key }}
-                    </a>
+            <a href="?category={{ key|urlencode }}"
+               class="text-decoration-none fw-bold text-dark">
+                {{ key }}
+            </a>
 
 
-                {% elif node.type == "level3" %}
+            {% elif node.type == "subcategory" %}
 
-                    <a href="?level3={{ key }}"
-                       class="text-decoration-none text-dark">
-                        {{ key }}
-                    </a>
+            <a href="?category={{ parent_category|urlencode }}&subcategory={{ key|urlencode }}"
+               class="text-decoration-none text-dark">
 
+                {{ key }}
 
-                {% elif node.type == "level4" %}
-
-                    <a href="?level4={{ key }}"
-                       class="text-decoration-none text-dark">
-                        {{ key }}
-                    </a>
-
-                {% endif %}
-
-            </summary>
+            </a>
 
 
-            {% if node.children %}
+            {% elif node.type == "level3" %}
 
-                <ul class="list-unstyled ms-3">
+            <a href="?level3={{ key }}"
+               class="text-decoration-none text-dark">
+                {{ key }}
+            </a>
 
-                    {% include "inventory/category_tree.html" with category_tree=node.children %}
 
-                </ul>
+            {% elif node.type == "level4" %}
+
+            <a href="?level4={{ key }}"
+               class="text-decoration-none text-dark">
+                {{ key }}
+            </a>
 
             {% endif %}
 
+        </summary>
 
-        </details>
+
+        {% if node.children %}
+
+        <ul class="list-unstyled ms-3">
+
+            {% include "inventory/category_tree.html" with category_tree=node.children parent_category=key %}
+
+        </ul>
+
+        {% endif %}
+
+
+    </details>
 
 
     {% endif %}
@@ -67,22 +69,21 @@
 {% endfor %}
 
 
-
 {% if category_tree.products %}
 
-    {% for product in category_tree.products %}
+{% for product in category_tree.products %}
 
-        <li class="ms-3">
+<li class="ms-3">
 
-            <a href="?search={{ product.name }}"
-               class="text-decoration-none">
+    <a href="?search={{ product.product_name }}"
+       class="text-decoration-none">
 
-                {{ product.name }}
+        {{ product.product_name }}
 
-            </a>
+    </a>
 
-        </li>
+</li>
 
-    {% endfor %}
+{% endfor %}
 
 {% endif %}
