@@ -1,0 +1,88 @@
+{% for key, node in category_tree.items %}
+
+<li class="mb-1" style="list-style-type: none">
+
+    {% if key != "products" %}
+
+        <details>
+
+            <summary style="cursor:pointer;">
+
+                {% if node.type == "category" %}
+
+                    <a href="?category={{ key }}"
+                       class="text-decoration-none fw-bold text-dark">
+                        {{ key }}
+                    </a>
+
+
+                {% elif node.type == "subcategory" %}
+
+                    <a href="?subcategory={{ key }}"
+                       class="text-decoration-none text-dark">
+                        {{ key }}
+                    </a>
+
+
+                {% elif node.type == "level3" %}
+
+                    <a href="?level3={{ key }}"
+                       class="text-decoration-none text-dark">
+                        {{ key }}
+                    </a>
+
+
+                {% elif node.type == "level4" %}
+
+                    <a href="?level4={{ key }}"
+                       class="text-decoration-none text-dark">
+                        {{ key }}
+                    </a>
+
+                {% endif %}
+
+            </summary>
+
+
+            {% if node.children %}
+
+                <ul class="list-unstyled ms-3">
+
+                    {% include "inventory/category_tree.html" with category_tree=node.children %}
+
+                </ul>
+
+            {% endif %}
+
+
+        </details>
+
+
+    {% endif %}
+
+
+</li>
+
+
+{% endfor %}
+
+
+
+{% if category_tree.products %}
+
+    {% for product in category_tree.products %}
+
+        <li class="ms-3">
+
+            <a href="?search={{ product.name }}"
+               class="text-decoration-none">
+
+                {{ product.name }}
+
+            </a>
+
+        </li>
+
+    {% endfor %}
+
+{% endif %}

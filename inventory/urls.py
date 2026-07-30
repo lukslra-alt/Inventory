@@ -16,9 +16,27 @@ urlpatterns = [
     ),
 
     path(
+        "search-products/",
+        views.search_products,
+        name="search_products"
+    ),
+
+    path(
         "product/<int:pk>/edit/",
-        views.edit_product,
-        name="edit_product"
+        views.product_edit,
+        name="product_edit"
+    ),
+
+    path(
+        "sync/",
+        views.manual_sync,
+        name="manual_sync"
+    ),
+
+    path(
+        "dashboard/",
+        views.dashboard,
+        name="dashboard"
     ),
 
 ]

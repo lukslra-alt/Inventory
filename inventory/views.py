@@ -1,12 +1,16 @@
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
+from django.core.management import call_command
 from django.core.paginator import Paginator
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.template.loader import render_to_string
+from django.contrib import messages
 
-from .models import Product, SyncHistory
+from .models import Product, SyncSetting
 from .forms import ProductAdminForm
+from inventory.services.category_tree import get_category_tree
 
 
 # Create your views here.
@@ -14,29 +18,109 @@ from .forms import ProductAdminForm
 def dashboard(request):
     products = Product.objects.filter(
         active=True
-    ).order_by("product_name")
+    )
 
-    search = request.GET.get("search", "")
+    search = request.GET.get(
+        "search",
+        ""
+    ).strip()
+
+    category = request.GET.get(
+        "category",
+        ""
+    )
+
+    subcategory = request.GET.get(
+        "subcategory",
+        ""
+    )
+
+    level3 = request.GET.get(
+        "level3",
+        ""
+    )
+
+    level4 = request.GET.get(
+        "level4",
+        ""
+    )
 
     if search:
         products = products.filter(
-            product_name__icontains=search
+
+            Q(product_name__icontains=search) |
+
+            Q(category__icontains=search) |
+
+            Q(subcategory__icontains=search) |
+
+            Q(level3__icontains=search) |
+
+            Q(level4__icontains=search) |
+
+            Q(hierarchy_path__icontains=search)
+
         )
 
-    paginator = Paginator(products, 50)
+    if category:
+        products = products.filter(
+            category=category
+        )
 
-    page_number = request.GET.get("page")
+    if subcategory:
+        products = products.filter(
+            subcategory=subcategory
+        )
 
-    page_obj = paginator.get_page(page_number)
+    if level3:
+        products = products.filter(
+            level3=level3
+        )
 
-    last_sync = SyncHistory.objects.first()
+    if level4:
+        products = products.filter(
+            level4=level4
+        )
+
+    products = products.order_by(
+        "product_name"
+    )
+
+    paginator = Paginator(
+        products,
+        50
+    )
+
+    page_obj = paginator.get_page(
+        request.GET.get("page")
+    )
 
     context = {
+
         "products": page_obj,
+
+        "category_tree": get_category_tree(),
+
         "search": search,
-        "last_sync": last_sync,
-        "product_count": products.count(),
-        "is_admin": request.user.is_staff,
+
+        "total_products": Product.objects.filter(
+            active=True
+        ).count(),
+
+        "low_stock": Product.objects.filter(
+            active=True,
+            status="LOW"
+        ).count(),
+
+        "nil_stock": Product.objects.filter(
+            active=True,
+            status="NIL"
+        ).count(),
+
+        "sync_setting": SyncSetting.objects.first(),
+
+        "show_cost": request.user.is_staff,
+
     }
 
     return render(
@@ -75,7 +159,7 @@ def product_search(request):
 
 @staff_member_required
 @staff_member_required
-def edit_product(request, pk):
+def product_edit(request, pk):
     product = get_object_or_404(
         Product,
         id=pk,
@@ -118,5 +202,104 @@ def edit_product(request, pk):
         {
             "form": form,
             "product": product,
+        }
+    )
+
+
+@staff_member_required
+def manual_sync(request):
+    call_command(
+        "sync_inventory"
+    )
+
+    messages.success(
+        request,
+        "Inventory sync completed."
+    )
+
+    return redirect(
+        "dashboard"
+    )
+
+
+@login_required
+def search_products(request):
+    query = request.GET.get("q", "").strip()
+
+    products = Product.objects.filter(
+        active=True
+    )
+
+    category = request.GET.get(
+        "category",
+        ""
+    )
+
+    subcategory = request.GET.get(
+        "subcategory",
+        ""
+    )
+
+    level3 = request.GET.get(
+        "level3",
+        ""
+    )
+
+    level4 = request.GET.get(
+        "level4",
+        ""
+    )
+
+    if category:
+        products = products.filter(
+            category=category
+        )
+
+    if subcategory:
+        products = products.filter(
+            subcategory=subcategory
+        )
+
+    if level3:
+        products = products.filter(
+            level3=level3
+        )
+
+    if level4:
+        products = products.filter(
+            level4=level4
+        )
+
+    if query:
+        products = products.filter(
+
+            Q(product_name__icontains=query) |
+
+            Q(category__icontains=query) |
+
+            Q(subcategory__icontains=query) |
+
+            Q(level3__icontains=query) |
+
+            Q(level4__icontains=query)
+
+        )
+
+    data = []
+
+    for product in products[:50]:
+        data.append({
+
+            "id": product.id,
+            "name": product.product_name,
+            "qty": product.qty,
+            "price": product.sales_price,
+            "status": product.status,
+
+        })
+
+    return JsonResponse(
+        {
+            "products": data
         }
     )
