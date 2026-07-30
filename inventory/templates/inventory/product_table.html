@@ -1,0 +1,83 @@
+{% for product in products %}
+
+<tr>
+
+    <td>
+        {{ product.product_name }}
+    </td>
+
+
+    <td>
+        {{ product.qty }}
+    </td>
+
+
+    {% if is_admin %}
+
+    <td>
+        {{ product.avg_cost }}
+    </td>
+
+    {% endif %}
+
+
+    <td>
+        {{ product.sales_price }}
+    </td>
+
+
+    <td>
+
+        {% if product.status == "OK" %}
+
+        <span class="badge bg-success">
+OK
+</span>
+
+        {% elif product.status == "LOW" %}
+
+        <span class="badge bg-warning text-dark">
+LOW
+</span>
+
+        {% else %}
+
+        <span class="badge bg-danger">
+NIL
+</span>
+
+        {% endif %}
+
+    </td>
+    {% if is_admin %}
+
+    <td>
+
+        <a href="{% url 'edit_product' product.id %}"
+           class="btn btn-sm btn-outline-primary">
+
+            Edit
+
+        </a>
+
+    </td>
+
+    {% endif %}
+
+</tr>
+
+
+{% empty %}
+
+<tr>
+
+    <td colspan="5"
+        class="text-center">
+
+        No products found
+
+    </td>
+
+</tr>
+
+{% endfor %}
