@@ -1,82 +1,103 @@
+// Safeguard lifecycle orchestration layout
 document.addEventListener("DOMContentLoaded", function () {
-    const search = document.getElementById("searchBox"); // Updated to match your HTML
-    const table = document.getElementById("productList"); // Updated to match your HTML
+    const searchBox = document.getElementById("searchBox");
+    const productList = document.getElementById("productList");
+    let debounceTimer = null;
 
-    if (!search || !table) {
-        return;
-    }
+    if (searchBox && productList) {
+        searchBox.addEventListener("input", function (e) {
+            e.stopPropagation();
+            let query = this.value.trim();
 
-    let timer;
-    search.addEventListener("input", function () {
-        clearTimeout(timer);
+            // Clear the previous execution window context to throttle calls
+            clearTimeout(debounceTimer);
 
-        // Debounce input for 300ms to save server performance
-        timer = setTimeout(function () {
-            let query = search.value.trim();
-            let params = new URLSearchParams();
-            params.append("q", query);
+            // Execute network payload retrieval only after user activity idles
+            debounceTimer = setTimeout(() => {
+                let params = new URLSearchParams();
+                params.append("q", query);
 
-            // Retain active category sidebar filters during search
-            let urlParams = new URLSearchParams(window.location.search);
-            ["category", "subcategory", "level3", "level4"].forEach(function (field) {
-                if (urlParams.get(field)) {
-                    params.append(field, urlParams.get(field));
-                }
-            });
-
-            // Use the dynamic window variables set up in the HTML
-            const adminFlag = typeof isAdmin !== 'undefined' ? isAdmin : false;
-            const costFlag = typeof showCost !== 'undefined' ? showCost : false;
-
-            fetch("/search/?" + params.toString())
-                .then(response => response.json())
-                .then(data => {
-                    // Fallback: If your backend view returns ready-made html content
-                    if (data.html) {
-                        table.innerHTML = data.html;
-                        return;
+                let urlParams = new URLSearchParams(window.location.search);
+                ["category", "subcategory", "level3", "level4"].forEach(field => {
+                    if (urlParams.get(field)) {
+                        params.append(field, urlParams.get(field));
                     }
+                });
 
-                    // Standard: Rebuild the data table dynamically using JSON elements
-                    let html = `
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover align-middle">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>Product</th>
-                                        <th>Qty</th>
-                                        <th>Price</th>
-                                        ${costFlag ? "<th>Cost</th>" : ""}
-                                        ${adminFlag ? "<th>Status</th><th>Action</th>" : ""}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                    `;
+                // Targets the single dedicated JSON processing data API node
+                fetch("/search_products/?" + params.toString())
+                    .then(response => {
+                        if (!response.ok) throw new Error("Network response error");
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Access application context config parameters safely
+                        const isAdmin = window.InventoryState ? window.InventoryState.isAdmin : false;
+                        const showCost = window.InventoryState ? window.InventoryState.showCost : false;
 
-                    if (!data.products || data.products.length === 0) {
-                        html = `<div class="alert alert-warning text-center">No products found</div>`;
-                    } else {
+                        let html = `
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover align-middle">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Product</th>
+                                            <th>Qty</th>
+                                            <th>Price</th>
+                                            ${showCost ? "<th>Cost</th>" : ""}
+                                            ${isAdmin ? "<th>Status</th><th>Action</th>" : ""}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+
                         data.products.forEach(product => {
                             html += `
                                 <tr>
-                                    <td>${product.name}</td>
+                                    <td>${product.name || product.product_name}</td>
                                     <td>${product.qty}</td>
-                                    <td>${product.price}</td>
-                                    ${costFlag ? `<td>${product.avg_cost || '0.00'}</td>` : ""}
-                                    ${adminFlag ? `
+                                    <td>${product.price || product.sales_price}</td>
+                                    ${showCost ? `<td>${product.avg_cost || '0.00'}</td>` : ""}
+                                    ${isAdmin ? `
                                         <td><span class="badge bg-secondary">${product.status}</span></td>
-                                        <td><a href="/product/${product.id}/edit/" class="btn btn-sm btn-primary">Edit</a></td>
+                                        <td>
+                                            <a href="/product/${product.id}/edit/" class="btn btn-sm btn-primary">Edit</a>
+                                        </td>
                                     ` : ""}
                                 </tr>
                             `;
                         });
-                        html += `</tbody></table></div>`;
-                    }
-                    table.innerHTML = html;
-                })
-                .catch(error => {
-                    console.error("Search error:", error);
-                });
-        }, 300);
+
+                        html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+
+                        if (!data.products || data.products.length === 0) {
+                            html = `
+                                <div class="alert alert-warning text-center">
+                                    No products found
+                                </div>
+                            `;
+                        }
+
+                        productList.innerHTML = html;
+                    })
+                    .catch(error => {
+                        console.error("Search API exception event:", error);
+                    });
+            }, 300); // 300 milliseconds delay window execution
+        });
+    }
+
+    // Programmatic mobile layout toggle safety check
+    document.body.addEventListener("click", function (event) {
+        if (event.target.classList.contains("category-tree-link")) {
+            const offcanvasElement = document.getElementById("mobileCategories");
+            if (offcanvasElement && window.bootstrap) {
+                const instance = bootstrap.Offcanvas.getInstance(offcanvasElement);
+                if (instance) instance.hide();
+            }
+        }
     });
 });

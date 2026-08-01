@@ -1,73 +1,55 @@
-const CACHE_NAME = "inventorypro-v5"; // Incremented version to clear old cache layers
+const CACHE_NAME = "inventorypro-v6"; // Bumped version structure layer
 const FILES_TO_CACHE = [
     "/",
     "/static/inventory/css/bootstrap.min.css",
     "/static/inventory/offline-db.js",
     "/static/inventory/product-loader.js",
     "/static/inventory/network.js",
-    "/static/inventory/js/bootstrap.bundle.min.js", // 🟢 Add this line to cache Bootstrap locally
-    "/static/inventory/js/dashboard.js",             // 🟢 Highly recommended to cache this too
-    "/static/inventory/js/search.js"                // 🟢 Highly recommended to cache this too
+    "/static/inventory/js/bootstrap.bundle.min.js",
+    "/static/inventory/js/dashboard.js",
+    "/static/inventory/js/search.js"
 ];
 
-
-// Installation Lifecycle - Cache static system dependencies
 self.addEventListener("install", event => {
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(cache => {
-                return cache.addAll(FILES_TO_CACHE);
-            })
+        caches.open(CACHE_NAME).then(cache => cache.addAll(FILES_TO_CACHE))
     );
     self.skipWaiting();
 });
 
-// Activation Lifecycle - Purge stale cache structures automatically
 self.addEventListener("activate", event => {
     event.waitUntil(
-        caches.keys()
-            .then(keys => {
-                return Promise.all(
-                    keys.map(key => {
-                        if (key !== CACHE_NAME) {
-                            return caches.delete(key);
-                        }
-                    })
-                );
+        caches.keys().then(keys => Promise.all(
+            keys.map(key => {
+                if (key !== CACHE_NAME) return caches.delete(key);
             })
+        ))
     );
     self.clients.claim();
 });
 
-// Fetch Interception Engine - Safe offline routing matrix
 self.addEventListener("fetch", event => {
     const url = new URL(event.request.url);
 
-    // 1. BYPASS RULE: Direct network bypass for Bootstrap CDN or external assets
+    // 1. BYPASS RULE: External resource handling execution safety block
     if (url.hostname.includes("cdn.jsdelivr.net") || !url.origin.includes(self.location.hostname)) {
-        return; // Let the browser handle external requests over the real network
+        return;
     }
 
-    // 2. BYPASS RULE: Do not intercept asynchronous dynamic backend search API points
-    if (url.pathname.includes("/search/")) {
-        return; // Allow the AJAX search script to hit your real Django views directly
+    // 2. BYPASS RULE: Dynamic search matching prevents worker interception duplication
+    if (url.pathname.includes("search")) {
+        return;
     }
 
-    // 3. CACHE STRATEGY: Standard Progressive Web App response mapping
+    // 3. CACHE STRATEGY: Static fallback execution logic mapping
     event.respondWith(
-        caches.match(event.request)
-            .then(cachedResponse => {
-                if (cachedResponse) {
-                    return cachedResponse; // Return matching static asset instantly
+        caches.match(event.request).then(cachedResponse => {
+            if (cachedResponse) return cachedResponse;
+            return fetch(event.request).catch(() => {
+                if (event.request.mode === 'navigate') {
+                    return caches.match("/");
                 }
-
-                return fetch(event.request)
-                    .catch(() => {
-                        // Safe offline fallback rules: only route page navigations to root
-                        if (event.request.mode === 'navigate') {
-                            return caches.match("/");
-                        }
-                    });
-            })
+            });
+        })
     );
 });
