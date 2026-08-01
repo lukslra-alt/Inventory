@@ -138,4 +138,4 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-ALLOWED_HOSTS = ['waseerdambulla.pythonanywhere.com', 'localhost']
+ALLOWED_HOSTS = ['waseerdambulla.pythonanywhere.com', '127.0.0.1:8000', '127.0.0.1']
