@@ -7,14 +7,11 @@ from inventory.models import SyncHistory
 
 
 def sync_inventory():
-
     # Download Google Sheet
 
     download = download_google_sheet()
 
-
     if not download["success"]:
-
         SyncHistory.objects.create(
             status="FAILED",
             message=download["error"]
@@ -24,9 +21,7 @@ def sync_inventory():
             download["error"]
         )
 
-
     filepath = download["filepath"]
-
 
     try:
 
@@ -38,13 +33,11 @@ def sync_inventory():
 
         products = parser.parse()
 
-
         # Sync database
 
         result = sync_products(
             products
         )
-
 
         # Save history
 
@@ -67,13 +60,11 @@ def sync_inventory():
 
         )
 
-
         return result
 
 
 
     except Exception as error:
-
 
         SyncHistory.objects.create(
 
@@ -92,5 +83,4 @@ def sync_inventory():
         # Remove temporary file
 
         if os.path.exists(filepath):
-
             os.remove(filepath)

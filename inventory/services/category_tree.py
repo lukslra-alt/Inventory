@@ -1,11 +1,9 @@
 from inventory.models import Product
 
-
 from inventory.models import Product
 
 
 def get_category_tree():
-
     tree = {}
 
     products = Product.objects.filter(active=True).order_by(
@@ -32,7 +30,6 @@ def get_category_tree():
         current = cat["children"]
 
         if subcategory:
-
             sub = current.setdefault(subcategory, {
                 "type": "subcategory",
                 "category": category,
@@ -43,7 +40,6 @@ def get_category_tree():
             current = sub["children"]
 
         if level3:
-
             l3 = current.setdefault(level3, {
                 "type": "level3",
                 "category": category,
@@ -55,7 +51,6 @@ def get_category_tree():
             current = l3["children"]
 
         if level4:
-
             l4 = current.setdefault(level4, {
                 "type": "level4",
                 "category": category,
