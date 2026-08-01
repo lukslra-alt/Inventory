@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="price-container">
+
+<h2 class="price-title">
+    Price List Management
+</h2>
+
+
+<a href="{% url 'admin:pricelist_pricepage_add' %}"
+class="btn btn-success">
++ Add New Category
+</a>
+
+
+<br><br>
+
+
+<table class="category-table">
+
+<tr>
+    <th>Category</th>
+    <th>Products</th>
+    <th>Actions</th>
+</tr>
+
+
+{% for page in pages %}
+
+<tr>
+
+<td>
+{{ page.name }}
+</td>
+
+
+<td>
+{{ page.items.count }}
+</td>
+
+
+<td>
+
+<a href="{% url 'admin:pricelist_pricepage_change' page.id %}"
+class="btn btn-primary">
+Edit
+</a>
+
+
+<a href="{% url 'add_products' page.id %}"
+class="btn btn-success">
+Add Products
+</a>
+
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+
+</table>
+
+
+</div>
+
+
+{% endblock %}

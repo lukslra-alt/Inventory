@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+
+    .price-container {
+        max-width: 800px;
+        margin: 30px auto;
+    }
+
+    .price-title {
+        border-bottom: 2px solid #333;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+
+    .category-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .category-table td {
+        border: 1px solid #ccc;
+        padding: 15px;
+        font-size: 18px;
+    }
+
+    .category-table a {
+        text-decoration: none;
+        color: #000;
+        display: block;
+    }
+
+    .category-table tr:hover {
+        background: #f2f2f2;
+    }
+
+</style>
+
+
+<div class="price-container">
+
+    <h2 class="price-title">
+        Price List
+    </h2>
+
+
+    <table class="category-table">
+        {% if user.is_staff %}
+        <tr>
+            <td>
+                <a style="font-weight: bolder" href="{% url 'price_manage' %}">
+                    PRICE LIST MANAGEMENT
+                </a>
+            </td>
+        </tr>
+
+        {% endif %}
+
+        {% for page in pages %}
+        <tr>
+            <td>
+                <a href="{% url 'price_page' page.slug %}">
+                    {{ page.name }}
+                </a>
+            </td>
+        </tr>
+
+        {% empty %}
+
+        <tr>
+            <td>No price list categories available</td>
+        </tr>
+
+        {% endfor %}
+
+    </table>
+
+</div>
+
+{% endblock %}

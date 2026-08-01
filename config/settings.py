@@ -38,6 +38,8 @@ INSTALLED_APPS = [
 
     "inventory",
     "accounts",
+    "adminsortable2",
+    "pricelist",
 ]
 
 MIDDLEWARE = [
@@ -135,3 +137,5 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+ALLOWED_HOSTS = ['172.20.10.2', 'localhost', '127.0.0.1']

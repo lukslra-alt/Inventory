@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>
+Add Products to {{ page.name }}
+</h2>
+
+
+<form method="get">
+
+<input
+type="text"
+name="search"
+value="{{ search }}"
+placeholder="Search product">
+
+<button>
+Search
+</button>
+
+</form>
+
+
+<br>
+
+
+<form method="post">
+
+{% csrf_token %}
+
+
+{% for product in products %}
+
+<div>
+
+<input
+type="checkbox"
+name="products"
+value="{{ product.id }}"
+checked
+>
+
+{{ product.product_name }}
+
+-
+Rs. {{ product.sales_price }}
+
+</div>
+
+
+{% empty %}
+
+No products found
+
+{% endfor %}
+
+
+<br>
+
+
+<button type="submit">
+Add Selected Products
+</button>
+
+
+</form>
+
+
+{% endblock %}

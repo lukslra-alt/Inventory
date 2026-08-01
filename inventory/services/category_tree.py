@@ -1,12 +1,14 @@
 from inventory.models import Product
 
 
+from inventory.models import Product
+
+
 def get_category_tree():
 
-    products = Product.objects.filter(
-        active=True
-    ).values(
-        "id",
+    tree = {}
+
+    products = Product.objects.filter(active=True).order_by(
         "category",
         "subcategory",
         "level3",
@@ -14,78 +16,60 @@ def get_category_tree():
         "product_name"
     )
 
+    for p in products:
 
-    tree = {}
+        category = p.category or "Uncategorized"
+        subcategory = p.subcategory or ""
+        level3 = p.level3 or ""
+        level4 = p.level4 or ""
 
+        cat = tree.setdefault(category, {
+            "type": "category",
+            "category": category,
+            "children": {}
+        })
 
-    for product in products:
-
-        category = product["category"] or "Uncategorized"
-        subcategory = product["subcategory"]
-        level3 = product["level3"]
-        level4 = product["level4"]
-
-
-        tree.setdefault(
-            category,
-            {
-                "type": "category",
-                "children": {}
-            }
-        )
-
-
-        current = tree[category]["children"]
-
+        current = cat["children"]
 
         if subcategory:
 
-            current.setdefault(
-                subcategory,
-                {
-                    "type": "subcategory",
-                    "children": {}
-                }
-            )
+            sub = current.setdefault(subcategory, {
+                "type": "subcategory",
+                "category": category,
+                "subcategory": subcategory,
+                "children": {}
+            })
 
-            current = current[subcategory]["children"]
-
+            current = sub["children"]
 
         if level3:
 
-            current.setdefault(
-                level3,
-                {
-                    "type": "level3",
-                    "children": {}
-                }
-            )
+            l3 = current.setdefault(level3, {
+                "type": "level3",
+                "category": category,
+                "subcategory": subcategory,
+                "level3": level3,
+                "children": {}
+            })
 
-            current = current[level3]["children"]
-
+            current = l3["children"]
 
         if level4:
 
-            current.setdefault(
-                level4,
-                {
-                    "type": "level4",
-                    "children": {}
-                }
-            )
+            l4 = current.setdefault(level4, {
+                "type": "level4",
+                "category": category,
+                "subcategory": subcategory,
+                "level3": level3,
+                "level4": level4,
+                "children": {}
+            })
 
-            current = current[level4]["children"]
+            current = l4["children"]
 
-
-        current.setdefault(
-            "products",
-            []
-        ).append(
-            {
-                "id": product["id"],
-                "name": product["product_name"]
-            }
-        )
-
+        current.setdefault("products", []).append({
+            "id": p.id,
+            "product_name": p.product_name
+        })
 
     return tree

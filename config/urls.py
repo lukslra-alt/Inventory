@@ -33,8 +33,9 @@ urlpatterns = [
         include("accounts.urls")
     ),
 
-]
+    path('pricelist/', include('pricelist.urls')),
 
+]
 
 if settings.DEBUG:
     urlpatterns += static(

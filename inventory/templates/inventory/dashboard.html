@@ -1,455 +1,226 @@
 {% extends "base.html" %}
-
 {% block content %}
-
 {% load static %}
 
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-
-    <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1">
-
-    <title>Inventory Dashboard</title>
-
-
-    <link href="{% static 'css/bootstrap.min.css' %}"
-          rel="stylesheet">
-
-
-    <style>
-
-        body {
-            background: #f8f9fa;
-        }
-
-
-        .product-card {
-            transition: 0.2s;
-        }
-
-
-        .product-card:hover {
-            transform: scale(1.01);
-        }
-
-
-        .category-box {
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-
-    </style>
-
-
-</head>
-
-
-<body>
-
+<!-- Custom Local View Styles -->
+<style>
+    body {
+        background: #f8f9fa;
+    }
+    .product-card {
+        transition: 0.2s;
+    }
+    .product-card:hover {
+        transform: scale(1.01);
+    }
+    .category-box {
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+</style>
 
 <div class="container-fluid p-3">
-
-
-    <h4 class="mb-3">
-        Inventory
-    </h4>
-
-
+    <h4 class="mb-3">Inventory</h4>
     <div class="row">
 
-
-        <!-- =====================
-             CATEGORY SIDEBAR
-        ====================== -->
-
-
+        <!-- ===================== CATEGORY SIDEBAR ====================== -->
         <div class="col-md-3">
-
-
-            <!-- Desktop category -->
-
+            <!-- Desktop category (Visible on desktop, hidden on mobile) -->
             <div class="card d-none d-md-block">
-
-
                 <div class="card-header fw-bold">
-
                     Categories
-
                 </div>
-
-
                 <div class="card-body category-box">
-
-
                     {% include "inventory/category_tree.html" %}
-
-
                 </div>
-
-
             </div>
 
-
-            <!-- Mobile button -->
-
-            <button
-                    class="btn btn-primary d-md-none mb-3"
-                    type="button"
-                    data-bs-toggle="offcanvas"
-                    data-bs-target="#mobileCategories">
-
-
+            <!-- Mobile button (Visible on mobile, hidden on desktop) -->
+            <button class="btn btn-primary d-md-none mb-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileCategories" aria-controls="mobileCategories">
                 ☰ Categories
-
-
             </button>
-
-
         </div>
 
-
-        <!-- =====================
-             PRODUCT AREA
-        ====================== -->
-
-
+        <!-- ===================== PRODUCT AREA ====================== -->
         <div class="col-md-9">
-
-
-            <!-- SEARCH -->
-
+            <!-- SEARCH INPUT -->
             <div class="mb-3">
-
-
-                <input
-                        type="text"
-                        id="searchBox"
-                        class="form-control"
-                        placeholder="Search products...">
-
-
+                <input type="text" id="searchBox" class="form-control" placeholder="Search products...">
             </div>
 
-
-            <!-- PRODUCT LIST -->
-
-
+            <!-- PRODUCT LIST ASYNC WRAPPER -->
             <div id="productList">
-
                 <div class="table-responsive">
-
                     <table class="table table-striped table-hover align-middle">
-
                         <thead class="table-dark">
-
-                        <tr>
-                            <th>Product</th>
-                            <th>Qty</th>
-                            <th>Price</th>
-
-                            {% if show_cost %}
-                            <th>Cost</th>
-                            {% endif %}
-
-                            {% if is_admin %}
-                            <th>Status</th>
-                            <th>Action</th>
-                            {% endif %}
-                        </tr>
-
+                            <tr>
+                                <th>Product</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                {% if show_cost %}
+                                    <th>Cost</th>
+                                {% endif %}
+                                {% if is_admin %}
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                {% endif %}
+                            </tr>
                         </thead>
-
-
                         <tbody>
-
-
-                        {% for product in products %}
-
-                        <tr>
-
-                            <td>
-                                {{ product.product_name }}
-                            </td>
-
-
-                            <td>
-                                {{ product.qty }}
-                            </td>
-
-
-                            <td>
-                                {{ product.sales_price }}
-                            </td>
-
-
-                            {% if is_admin  %}
-                            <td>
-                                {{ product.avg_cost }}
-                            </td>
-
-
-
-                            <td>
-
-                        <span class="badge bg-secondary">
-                            {{ product.status }}
-                        </span>
-
-                            </td>
-                            <td>
-                                <a href="{% url 'product_edit' product.id %}"
-                                   class="btn btn-sm btn-primary">
-                                    Edit
-                                </a>
-                            </td>
-                            {% endif %}
-
-                        </tr>
-
-
-                        {% empty %}
-
-                        <tr>
-
-                            <td colspan="5"
-                                class="text-center">
-
-                                No products found
-
-                            </td>
-
-                        </tr>
-
-
-                        {% endfor %}
-
-
+                            {% for product in page_obj %}
+                                <tr>
+                                    <td>{{ product.product_name }}</td>
+                                    <td>{{ product.qty }}</td>
+                                    <td>{{ product.sales_price }}</td>
+                                    {% if show_cost %}
+                                        <td>{{ product.avg_cost }}</td>
+                                    {% endif %}
+                                    {% if is_admin %}
+                                        <td><span class="badge bg-secondary">{{ product.status }}</span></td>
+                                        <td>
+                                            <a href="{% url 'product_edit' product.id %}" class="btn btn-sm btn-primary">Edit</a>
+                                        </td>
+                                    {% endif %}
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">No products found</td>
+                                </tr>
+                            {% endfor %}
                         </tbody>
-
-
                     </table>
 
+                    <!-- Pagination Navigation Controls -->
+                    <nav>
+                        <ul class="pagination">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{{ query_string }}&page={{ page_obj.previous_page_number }}">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                                    <a class="page-link" href="?{{ query_string }}&page={{ num }}">{{ num }}</a>
+                                </li>
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{{ query_string }}&page={{ page_obj.next_page_number }}">Next</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
                 </div>
-
             </div>
-
-
         </div>
 
-
     </div>
-
-
 </div>
 
-
-<!-- =====================
-     MOBILE CATEGORY DRAWER
-====================== -->
-
-
-<div class="offcanvas offcanvas-start"
-     tabindex="-1"
-     id="mobileCategories">
-
-
+<!-- ===================== MOBILE CATEGORY DRAWER ====================== -->
+<div class="offcanvas offcanvas-start d-md-none" tabindex="-1" id="mobileCategories" aria-labelledby="mobileCategoriesLabel">
     <div class="offcanvas-header">
-
-
-        <h5>
-            Categories
-        </h5>
-
-
-        <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="offcanvas">
-
-        </button>
-
-
+        <h5 class="offcanvas-title fw-bold" id="mobileCategoriesLabel">Categories</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
-
-
     <div class="offcanvas-body category-box">
-
-
         {% include "inventory/category_tree.html" %}
-
-
     </div>
-
-
 </div>
 
-
-<script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
-
+<!-- Dynamic Logic Interoperability Blocks -->
 <script>
-const isAdmin = {{ is_admin|yesno:"true,false" }};
+    const isAdmin = {{ is_admin | yesno:"true,false" }};
+    const showCost = {{ show_cost | yesno:"true,false" }};
 </script>
+
 <script>
+    // Safeguard lifecycle orchestration wrapper
+    document.addEventListener("DOMContentLoaded", function () {
+        const searchBox = document.getElementById("searchBox");
+        const productList = document.getElementById("productList");
 
-    const searchBox = document.getElementById("searchBox");
-    const productList = document.getElementById("productList");
+        if (searchBox && productList) {
+            searchBox.addEventListener("keyup", function () {
+                let query = this.value.trim();
+                let params = new URLSearchParams();
+                params.append("q", query);
 
-
-    searchBox.addEventListener("keyup", function () {
-
-        let query = this.value.trim();
-
-
-        let params = new URLSearchParams();
-
-        params.append(
-            "q",
-            query
-        );
-
-
-        let urlParams = new URLSearchParams(
-            window.location.search
-        );
-
-
-        [
-            "category",
-            "subcategory",
-            "level3",
-            "level4"
-        ].forEach(function (field) {
-
-            if (urlParams.get(field)) {
-
-                params.append(
-                    field,
-                    urlParams.get(field)
-                );
-
-            }
-
-        });
-
-
-        fetch(
-            "{% url 'search_products' %}?" + params.toString()
-        )
-
-            .then(response => response.json())
-
-            .then(data => {
-
-
-                let html = `
-
-<table class="table table-striped table-hover">
-
-<thead class="table-dark">
-
-<tr>
-<th>Product</th>
-<th>Qty</th>
-<th>Price</th>
-${isAdmin ? "<th>Status</th><th>Action</th>" : ""}
-</tr>
-
-</thead>
-
-<tbody>
-`;
-
-
-                data.products.forEach(product => {
-
-
-                    html += `
-
-<tr>
-
-<td>${product.name}</td>
-
-<td>${product.qty}</td>
-
-<td>${product.price}</td>
-
-${isAdmin ? `
-
-<td>${product.status}</td>
-
-<td>
-<a href="/product/${product.id}/edit/"
-class="btn btn-sm btn-primary">
-Edit
-</a>
-</td>
-
-` : ""}
-
-</tr>
-
-`;
-
-
+                let urlParams = new URLSearchParams(window.location.search);
+                ["category", "subcategory", "level3", "level4"].forEach(function (field) {
+                    if (urlParams.get(field)) {
+                        params.append(field, urlParams.get(field));
+                    }
                 });
 
+                fetch("{% url 'search_products' %}?" + params.toString())
+                    .then(response => response.json())
+                    .then(data => {
+                        let html = `
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover align-middle">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Product</th>
+                                            <th>Qty</th>
+                                            <th>Price</th>
+                                            ${showCost ? "<th>Cost</th>" : ""}
+                                            ${isAdmin ? "<th>Status</th><th>Action</th>" : ""}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
 
-                html += `
+                        data.products.forEach(product => {
+                            html += `
+                                <tr>
+                                    <td>${product.name}</td>
+                                    <td>${product.qty}</td>
+                                    <td>${product.price}</td>
+                                    ${showCost ? `<td>${product.avg_cost || '0.00'}</td>` : ""}
+                                    ${isAdmin ? `
+                                        <td><span class="badge bg-secondary">${product.status}</span></td>
+                                        <td>
+                                            <a href="/product/${product.id}/edit/" class="btn btn-sm btn-primary">Edit</a>
+                                        </td>
+                                    ` : ""}
+                                </tr>
+                            `;
+                        });
 
-            </tbody>
+                        html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
 
-            </table>
-
-            </div>
-
-            `;
-
-
-                if (data.products.length === 0) {
-
-                    html = `
-
-                <div class="alert alert-warning">
-
-                    No products found
-
-                </div>
-
-                `;
-
-                }
-
-
-                productList.innerHTML = html;
-
-
-            })
-
-
-            .catch(error => {
-
-                console.log(
-                    "Search error:",
-                    error
-                );
-
+                        if (data.products.length === 0) {
+                            html = `
+                                <div class="alert alert-warning text-center">
+                                    No products found
+                                </div>
+                            `;
+                        }
+                        productList.innerHTML = html;
+                    })
+                    .catch(error => {
+                        console.error("Search error:", error);
+                    });
             });
+        }
 
-
+        // Programmatic mobile layout toggle safety check
+        document.body.addEventListener("click", function (event) {
+            if (event.target.classList.contains("category-tree-link")) {
+                const offcanvasElement = document.getElementById("mobileCategories");
+                if (offcanvasElement && window.bootstrap) {
+                    const instance = bootstrap.Offcanvas.getInstance(offcanvasElement);
+                    if (instance) instance.hide();
+                }
+            }
+        });
     });
-
-
 </script>
-
-
-</body>
-
-</html>
-
 {% endblock %}

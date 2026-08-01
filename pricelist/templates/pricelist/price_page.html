@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>{{ page.name }}</title>
+
+<style>
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 30px;
+}
+
+h2 {
+    margin-top: 20px;
+    border-bottom: 2px solid #333;
+    padding-bottom: 8px;
+    font-size: 24px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th {
+    background: #f2f2f2;
+    text-align: left;
+    padding: 12px;
+    border: 1px solid #ccc;
+}
+
+td {
+    padding: 12px;
+    border: 1px solid #ccc;
+    font-size: 17px;
+}
+
+.price {
+    text-align: right;
+    font-weight: bold;
+}
+
+.print-btn {
+    margin-bottom: 20px;
+    padding: 8px 15px;
+    cursor: pointer;
+}
+
+.footer {
+    text-align: center;
+    font-size: 12px;
+    margin-top: 40px;
+}
+
+
+@media print {
+
+    .print-btn {
+        display:none;
+    }
+
+    body {
+        margin: 15px;
+    }
+
+    table {
+        page-break-inside: avoid;
+    }
+
+    .footer {
+        position: fixed;
+        bottom: 10px;
+        width:100%;
+    }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+
+<button class="print-btn" onclick="window.print()">
+Print
+</button>
+
+
+<h2>{{ page.name }}</h2>
+
+
+<table>
+
+<tr>
+    <th width="70%">Product</th>
+    <th width="30%">Selling Price</th>
+</tr>
+
+
+{% for item in page.items.all %}
+
+{% if item.visible %}
+
+<tr>
+
+<td>
+{{ item.product.product_name }}
+</td>
+
+<td class="price">
+Rs. {{ item.product.sales_price }}
+</td>
+
+</tr>
+
+{% endif %}
+
+{% endfor %}
+
+
+</table>
+
+
+<div class="footer">
+Last Updated: {% now "d-m-Y" %}
+</div>
+
+
+</body>
+</html>

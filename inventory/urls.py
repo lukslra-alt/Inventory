@@ -6,7 +6,7 @@ urlpatterns = [
     path(
         "",
         views.dashboard,
-        name="dashboard"
+        name="main"
     ),
 
     path(
@@ -37,6 +37,12 @@ urlpatterns = [
         "dashboard/",
         views.dashboard,
         name="dashboard"
+    ),
+
+    path(
+        "offline-products/",
+        views.offline_products,
+        name="offline_products"
     ),
 
 ]

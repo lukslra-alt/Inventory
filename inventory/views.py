@@ -95,11 +95,20 @@ def dashboard(request):
         request.GET.get("page")
     )
 
+    params = request.GET.copy()
+    params.pop("page", None)
+
+    query_string = params.urlencode()
     context = {
 
         "products": page_obj,
 
         "page_obj": page_obj,
+
+        "category": category,
+        "subcategory": subcategory,
+        "level3": level3,
+        "level4": level4,
 
         "category_tree": get_category_tree(),
 
@@ -124,6 +133,8 @@ def dashboard(request):
         "show_cost": request.user.is_staff,
 
         "is_admin": request.user.is_staff,
+
+        "query_string": query_string,
 
     }
 
@@ -307,3 +318,15 @@ def search_products(request):
             "products": data
         }
     )
+
+
+@staff_member_required
+def offline_products(request):
+    products = Product.objects.all().values(
+        "id",
+        "name",
+        "category",
+        "selling_price"
+    )
+
+    return JsonResponse(list(products), safe=False)
