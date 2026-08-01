@@ -52,8 +52,26 @@
     {% endblock %}
 
 </div>
+{% load static %}
+    <!-- Progressive Web App Service Worker Registration -->
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", () => {
+                navigator.serviceWorker.register("{% static 'service-worker.js' %}");
+            });
+        }
+    </script>
+<!-- Core Offline Functionality Engines -->
+    <script src="{% static 'inventory/network.js' %}"></script>
+    <script src="{% static 'inventory/offline-db.js' %}"></script>
+    <script src="{% static 'inventory/product-loader.js' %}"></script>
 
+    <!-- CRITICAL FIX: Use the official CDN to guarantee it loads -->
+    <script src="{% static 'inventory/js/bootstrap.bundle.min.js' %}"></script>
 
+    <!-- Custom dependent application scripts load absolute last -->
+    <script src="{% static 'inventory/js/dashboard.js' %}"></script>
+    <script src="{% static 'inventory/js/search.js' %}"></script>
 </body>
 
 </html>

@@ -4,8 +4,12 @@ const FILES_TO_CACHE = [
     "/static/inventory/css/bootstrap.min.css",
     "/static/inventory/offline-db.js",
     "/static/inventory/product-loader.js",
-    "/static/inventory/network.js"
+    "/static/inventory/network.js",
+    "/static/inventory/js/bootstrap.bundle.min.js", // 🟢 Add this line to cache Bootstrap locally
+    "/static/inventory/js/dashboard.js",             // 🟢 Highly recommended to cache this too
+    "/static/inventory/js/search.js"                // 🟢 Highly recommended to cache this too
 ];
+
 
 // Installation Lifecycle - Cache static system dependencies
 self.addEventListener("install", event => {

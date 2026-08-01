@@ -324,9 +324,9 @@ def search_products(request):
 def offline_products(request):
     products = Product.objects.all().values(
         "id",
-        "name",
+        "product_name",
         "category",
-        "selling_price"
+        "sales_price"
     )
 
     return JsonResponse(list(products), safe=False)

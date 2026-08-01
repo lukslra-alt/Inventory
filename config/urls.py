@@ -18,6 +18,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
+from django.views.decorators.cache import never_cache
+from django.views.generic import TemplateView
 
 urlpatterns = [
 
@@ -34,6 +36,13 @@ urlpatterns = [
     ),
 
     path('pricelist/', include('pricelist.urls')),
+
+    path('service-worker.js',
+         never_cache(TemplateView.as_view(
+             template_name="service-worker.js",
+             content_type='application/javascript'
+         )),
+         name='service-worker'),
 
 ]
 
