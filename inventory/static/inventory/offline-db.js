@@ -13,7 +13,7 @@ request.onupgradeneeded = function(event){
     db.createObjectStore(
         "products",
         {
-            keyPath:"id"
+            keyPath:"item"
         }
     );
 };

@@ -1,7 +1,5 @@
 from inventory.models import Product
 
-from inventory.models import Product
-
 
 def get_category_tree():
     tree = {}
@@ -63,7 +61,7 @@ def get_category_tree():
             current = l4["children"]
 
         current.setdefault("products", []).append({
-            "id": p.id,
+            "id": p.item,
             "product_name": p.product_name
         })
 

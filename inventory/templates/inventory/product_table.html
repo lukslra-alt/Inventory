@@ -15,7 +15,7 @@
     {% if is_admin %}
 
     <td>
-        {{ product.avg_cost }}
+        {{ product.cost }}
     </td>
 
     {% endif %}
@@ -53,7 +53,7 @@ NIL
 
     <td>
 
-        <a href="{% url 'product_edit' product.id %}"
+        <a href="{% url 'product_edit' product.item %}"
            class="btn btn-sm btn-outline-primary">
 
             Edit

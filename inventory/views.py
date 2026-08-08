@@ -12,18 +12,7 @@ from .forms import ProductAdminForm
 from inventory.services.category_tree import get_category_tree
 
 
-@login_required
-def dashboard(request):
-    """
-    Main dashboard controller loading paginated HTML inventory states.
-    """
-    products = Product.objects.filter(active=True)
-    search = request.GET.get("search", "").strip()
-    category = request.GET.get("category", "")
-    subcategory = request.GET.get("subcategory", "")
-    level3 = request.GET.get("level3", "")
-    level4 = request.GET.get("level4", "")
-
+def apply_product_filters(products, search="", category="", subcategory="", level3="", level4=""):
     if search:
         products = products.filter(
             Q(product_name__icontains=search) |
@@ -41,6 +30,24 @@ def dashboard(request):
         products = products.filter(level3=level3)
     if level4:
         products = products.filter(level4=level4)
+    return products
+
+
+@login_required
+def dashboard(request):
+    """
+    Main dashboard controller loading paginated HTML inventory states.
+    """
+    products = Product.objects.filter(active=True)
+    search = request.GET.get("search", "").strip()
+    category = request.GET.get("category", "")
+    subcategory = request.GET.get("subcategory", "")
+    level3 = request.GET.get("level3", "")
+    level4 = request.GET.get("level4", "")
+
+    products = apply_product_filters(
+        products, search, category, subcategory, level3, level4
+    )
 
     products = products.order_by("product_name")
     paginator = Paginator(products, 50)
@@ -84,35 +91,19 @@ def search_products(request):
     level3 = request.GET.get("level3", "")
     level4 = request.GET.get("level4", "")
 
-    if search:
-        products = products.filter(
-            Q(product_name__icontains=search) |
-            Q(category__icontains=search) |
-            Q(subcategory__icontains=search) |
-            Q(level3__icontains=search) |
-            Q(level4__icontains=search) |
-            Q(hierarchy_path__icontains=search)
-        )
-    if category:
-        products = products.filter(category=category)
-    if subcategory:
-        products = products.filter(subcategory=subcategory)
-    if level3:
-        products = products.filter(level3=level3)
-    if level4:
-        products = products.filter(level4=level4)
-
-    products = products.order_by("product_name")
+    products = apply_product_filters(
+        products, search, category, subcategory, level3, level4
+    ).order_by("product_name")
 
     data = []
     # Bound return limit to 50 for rapid client-side DOM processing
     for product in products[:50]:
         data.append({
-            "id": product.id,
+            "id": product.item,
             "name": product.product_name,
             "qty": product.qty,
             "price": str(product.sales_price),
-            "avg_cost": str(product.avg_cost) if hasattr(product, "avg_cost") else "0.00",
+            "cost": str(product.cost) if hasattr(product, "cost") else "0.00",
             "status": product.status,
         })
 
@@ -121,7 +112,7 @@ def search_products(request):
 
 @staff_member_required
 def product_edit(request, pk):
-    product = get_object_or_404(Product, id=pk, active=True)
+    product = get_object_or_404(Product, item=pk, active=True)
     if request.method == "POST":
         form = ProductAdminForm(request.POST, instance=product)
         if form.is_valid():
@@ -142,12 +133,15 @@ def product_edit(request, pk):
 
 @staff_member_required
 def manual_sync(request):
-    call_command("sync_inventory")
-    messages.success(request, "Inventory sync completed.")
+    try:
+        call_command("sync_inventory")
+        messages.success(request, "Inventory sync completed.")
+    except Exception as error:
+        messages.error(request, f"Sync failed: {error}")
     return redirect("dashboard")
 
 
 @staff_member_required
 def offline_products(request):
-    products = Product.objects.all().values("id", "product_name", "category", "sales_price")
+    products = Product.objects.all().values("item", "product_name", "category", "sales_price")
     return JsonResponse(list(products), safe=False)

@@ -1,10 +1,15 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
 from .models import PricePage, PriceListItem
+from .forms import PricePageForm
 from inventory.models import Product
+from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
+from django.db.models import Count, Q
 
 
 # Shows all categories
+@login_required
 def price_categories(request):
     pages = PricePage.objects.all()
 
@@ -18,6 +23,7 @@ def price_categories(request):
 
 
 # Shows one category page
+@login_required
 def price_page(request, slug):
     page = get_object_or_404(
         PricePage.objects.prefetch_related(
@@ -35,6 +41,8 @@ def price_page(request, slug):
     )
 
 
+@login_required
+@staff_member_required
 def add_products(request, page_id):
     page = get_object_or_404(
         PricePage,
@@ -48,7 +56,7 @@ def add_products(request, page_id):
     if search:
         products = Product.objects.filter(
             product_name__icontains=search
-        )
+        ).order_by("product_name")
 
     if request.method == "POST":
 
@@ -58,7 +66,7 @@ def add_products(request, page_id):
 
         for product_id in selected_products:
             product = Product.objects.get(
-                id=product_id
+                item=product_id
             )
 
             PriceListItem.objects.get_or_create(
@@ -66,10 +74,20 @@ def add_products(request, page_id):
                 product=product
             )
 
-        return redirect(
-            'admin:pricelist_pricepage_change',
-            page.id
+        messages.success(
+            request,
+            f"Added {len(selected_products)} product(s) to {page.name}."
         )
+
+        return redirect(
+            'price_manage'
+        )
+
+    added_items = set(
+        PriceListItem.objects.filter(
+            page=page
+        ).values_list("product_id", flat=True)
+    )
 
     return render(
         request,
@@ -77,7 +95,33 @@ def add_products(request, page_id):
         {
             'page': page,
             'products': products,
-            'search': search
+            'search': search,
+            'added_items': added_items,
+        }
+    )
+
+
+@staff_member_required
+def add_category(request):
+    if request.method == "POST":
+        form = PricePageForm(request.POST)
+
+        if form.is_valid():
+            page = form.save()
+            messages.success(
+                request,
+                f'Category "{page.name}" created.',
+            )
+            return redirect("price_manage")
+
+    else:
+        form = PricePageForm()
+
+    return render(
+        request,
+        "pricelist/add_category.html",
+        {
+            "form": form,
         }
     )
 
@@ -86,12 +130,25 @@ def add_products(request, page_id):
 def price_manage(request):
     pages = PricePage.objects.prefetch_related(
         'items'
+    ).annotate(
+        total_items=Count('items'),
+        visible_items=Count(
+            'items',
+            filter=Q(items__visible=True)
+        ),
     ).all()
+
+    total_pages = pages.count()
+    total_items = sum(p.total_items for p in pages)
+    visible_items = sum(p.visible_items for p in pages)
 
     return render(
         request,
         'pricelist/manage_categories.html',
         {
-            'pages': pages
+            'pages': pages,
+            'total_pages': total_pages,
+            'total_items': total_items,
+            'visible_items': visible_items,
         }
     )

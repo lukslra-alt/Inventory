@@ -8,102 +8,174 @@ from inventory.models import Product
 @transaction.atomic
 def sync_products(products):
 
-    sheet_products = set()
+    sheet_items = set()
 
     added = 0
     updated = 0
     restored = 0
 
-    for item in products:
+    for product_data in products:
 
-        product_name = item["product_name"].strip()
+        # =========================================
+        # GET ITEM / PRIMARY KEY
+        # =========================================
 
-        sheet_products.add(product_name)
+        item = str(
+            product_data["item"]
+        ).strip()
+
+        if not item:
+            continue
+
+        sheet_items.add(item)
 
         product = Product.objects.filter(
-            product_name=product_name
+            item=item
         ).first()
+
+        # =========================================
+        # NEW PRODUCT
+        # =========================================
 
         if product is None:
 
             Product.objects.create(
 
-                product_name=product_name,
+                item=item,
 
-                category=item["category"],
+                product_name=product_data["product_name"],
 
-                subcategory=item["subcategory"],
+                category=product_data["category"],
 
-                level3=item["level3"],
+                subcategory=product_data["subcategory"],
 
-                level4=item["level4"],
+                level3=product_data["level3"],
 
-                qty=Decimal(str(item["qty"])),
+                level4=product_data["level4"],
 
-                avg_cost=Decimal(str(item["avg_cost"])),
+                hierarchy_path=product_data["hierarchy_path"],
 
+                qty=Decimal(
+                    str(product_data["qty"])
+                ),
+
+                cost=Decimal(
+                    str(product_data["cost"])
+                ),
+
+                # LOCAL ADMIN VALUES
                 sales_price=Decimal("0.00"),
 
                 reorder_qty=Decimal("0.00"),
 
-                active=True
+                active=True,
 
             )
 
             added += 1
 
-        else:
+            continue
 
-            changed = False
+        # =========================================
+        # EXISTING PRODUCT
+        # =========================================
 
-            if product.category != item["category"]:
-                product.category = item["category"]
+        changed = False
+
+        fields = (
+            "product_name",
+            "category",
+            "subcategory",
+            "level3",
+            "level4",
+            "hierarchy_path",
+        )
+
+        for field in fields:
+
+            new_value = product_data[field]
+
+            if getattr(product, field) != new_value:
+
+                setattr(
+                    product,
+                    field,
+                    new_value
+                )
+
                 changed = True
 
-            if product.subcategory != item["subcategory"]:
-                product.subcategory = item["subcategory"]
-                changed = True
+        # =========================================
+        # QUANTITY
+        # =========================================
 
-            if product.level3 != item["level3"]:
-                product.level3 = item["level3"]
-                changed = True
+        qty = Decimal(
+            str(product_data["qty"])
+        )
 
-            if product.level4 != item["level4"]:
-                product.level4 = item["level4"]
-                changed = True
+        if product.qty != qty:
 
-            qty = Decimal(str(item["qty"]))
+            product.qty = qty
 
-            if product.qty != qty:
-                product.qty = qty
-                changed = True
+            changed = True
 
-            avg_cost = Decimal(str(item["avg_cost"]))
+        # =========================================
+        # COST
+        # =========================================
 
-            if product.avg_cost != avg_cost:
-                product.avg_cost = avg_cost
-                changed = True
+        cost = Decimal(
+            str(product_data["cost"])
+        )
 
-            if not product.active:
-                product.active = True
-                restored += 1
-                changed = True
+        if product.cost != cost:
 
-            if changed:
-                product.save()
-                updated += 1
+            product.cost = cost
+
+            changed = True
+
+        # =========================================
+        # RESTORE
+        # =========================================
+
+        if not product.active:
+
+            product.active = True
+
+            restored += 1
+
+            changed = True
+
+        # =========================================
+        # SAVE
+        # =========================================
+
+        if changed:
+
+            product.save()
+
+            updated += 1
+
+    # =========================================
+    # REMOVE PRODUCTS NO LONGER IN SHEET
+    # =========================================
 
     removed = 0
 
-    for product in Product.objects.filter(active=True):
+    for product in Product.objects.filter(
+        active=True
+    ):
 
-        if product.product_name not in sheet_products:
+        if product.item not in sheet_items:
 
             product.active = False
 
             product.save()
 
             removed += 1
+
+    # =========================================
+    # RETURN RESULT
+    # =========================================
 
     return {
 
@@ -115,6 +187,6 @@ def sync_products(products):
 
         "removed": removed,
 
-        "total_products": len(sheet_products),
+        "total_products": len(sheet_items),
 
     }

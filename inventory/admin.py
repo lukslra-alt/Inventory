@@ -4,14 +4,15 @@ from .models import Product
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-
     list_display = (
+        "item",
         "product_name",
+        "cost",
         "qty",
-        "avg_cost",
         "sales_price",
         "reorder_qty",
         "status",
+        "active",
     )
 
     list_filter = ("status",)

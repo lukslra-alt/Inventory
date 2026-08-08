@@ -1,13 +1,16 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>{{ page.name }}</title>
+{% extends "base.html" %}
+
+{% block title %}
+{{ page.name }} - InventoryPro
+{% endblock %}
+
+{% block content %}
 
 <style>
 
-body {
-    font-family: Arial, sans-serif;
-    margin: 30px;
+.price-container {
+    max-width: 900px;
+    margin: 30px auto;
 }
 
 h2 {
@@ -56,12 +59,14 @@ td {
 
 @media print {
 
-    .print-btn {
-        display:none;
+    .print-btn,
+    nav,
+    #network-status {
+        display: none;
     }
 
-    body {
-        margin: 15px;
+    .price-container {
+        margin: 0;
     }
 
     table {
@@ -71,62 +76,55 @@ td {
     .footer {
         position: fixed;
         bottom: 10px;
-        width:100%;
+        width: 100%;
     }
 
 }
 
 </style>
 
-</head>
 
-<body>
+<div class="price-container">
 
+    <button class="print-btn" onclick="window.print()">
+        Print
+    </button>
 
-<button class="print-btn" onclick="window.print()">
-Print
-</button>
+    <h2>{{ page.name }}</h2>
 
+    <table>
 
-<h2>{{ page.name }}</h2>
+        <tr>
+            <th width="70%">Product</th>
+            <th width="30%">Selling Price</th>
+        </tr>
 
+        {% for item in page.items.all %}
 
-<table>
+        {% if item.visible %}
 
-<tr>
-    <th width="70%">Product</th>
-    <th width="30%">Selling Price</th>
-</tr>
+        <tr>
 
+            <td>
+                {{ item.product.product_name }}
+            </td>
 
-{% for item in page.items.all %}
+            <td class="price">
+                Rs. {{ item.product.sales_price }}
+            </td>
 
-{% if item.visible %}
+        </tr>
 
-<tr>
+        {% endif %}
 
-<td>
-{{ item.product.product_name }}
-</td>
+        {% endfor %}
 
-<td class="price">
-Rs. {{ item.product.sales_price }}
-</td>
+    </table>
 
-</tr>
+    <div class="footer">
+        Last Updated: {% now "d-m-Y" %}
+    </div>
 
-{% endif %}
-
-{% endfor %}
-
-
-</table>
-
-
-<div class="footer">
-Last Updated: {% now "d-m-Y" %}
 </div>
 
-
-</body>
-</html>
+{% endblock %}

@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     <td>${product.name || product.product_name}</td>
                                     <td>${product.qty}</td>
                                     <td>${product.price || product.sales_price}</td>
-                                    ${showCost ? `<td>${product.avg_cost || '0.00'}</td>` : ""}
+                                    ${showCost ? `<td>${product.cost || '0.00'}</td>` : ""}
                                     ${isAdmin ? `
                                         <td><span class="badge bg-secondary">${product.status}</span></td>
                                         <td>

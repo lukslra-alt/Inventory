@@ -2,17 +2,22 @@ import os
 import requests
 from datetime import datetime
 
+from django.conf import settings
+
+
+SPREADSHEET_ID = "1ExDKhDUEmDbLYSzGoK07lsDbQgHh5j92"
+GID = "1396207375"
+
 GOOGLE_SHEET_URL = (
-    "https://docs.google.com/"
-    "spreadsheets/d/"
-    "16bgDH-7VNpuej0XjQbyRzztglnn4PgkE/"
-    "export?format=xlsx"
+    f"https://docs.google.com/spreadsheets/d/"
+    f"{SPREADSHEET_ID}/export?format=xlsx&gid={GID}"
 )
 
-TEMP_FOLDER = "temp"
+TEMP_FOLDER = os.path.join(settings.BASE_DIR, "temp")
 
 
 def download_google_sheet():
+
     os.makedirs(
         TEMP_FOLDER,
         exist_ok=True
@@ -37,8 +42,8 @@ def download_google_sheet():
         response.raise_for_status()
 
         with open(
-                filepath,
-                "wb"
+            filepath,
+            "wb"
         ) as file:
 
             file.write(
@@ -50,7 +55,6 @@ def download_google_sheet():
             "filepath": filepath,
             "size": len(response.content)
         }
-
 
     except requests.RequestException as error:
 

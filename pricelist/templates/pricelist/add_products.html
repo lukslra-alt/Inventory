@@ -1,70 +1,166 @@
 {% extends "base.html" %}
 
+{% block title %}
+Add Products - {{ page.name }}
+{% endblock %}
+
 {% block content %}
 
-<h2>
-Add Products to {{ page.name }}
-</h2>
+<style>
+    .manage-card {
+        border: none;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        border-radius: 12px;
+    }
 
+    .product-table th {
+        background: #f8f9fa;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #6c757d;
+        border-bottom-width: 2px;
+    }
 
-<form method="get">
+    .product-table td {
+        vertical-align: middle;
+    }
 
-<input
-type="text"
-name="search"
-value="{{ search }}"
-placeholder="Search product">
+    .product-table tbody tr {
+        transition: background-color 0.15s ease;
+    }
 
-<button>
-Search
-</button>
+    .product-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
 
-</form>
+    .search-box {
+        max-width: 480px;
+    }
+</style>
 
+<div class="container-fluid p-3">
 
-<br>
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item">
+                        <a href="{% url 'price_manage' %}" class="text-decoration-none">
+                            Price List Management
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        Add Products
+                    </li>
+                </ol>
+            </nav>
+            <h4 class="mb-1 fw-bold">{{ page.name }}</h4>
+            <p class="text-muted mb-0">Search products and add them to this category</p>
+        </div>
+        <a href="{% url 'price_manage' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Management
+        </a>
+    </div>
 
+    <!-- Search -->
+    <form method="get" class="mb-4">
+        <div class="input-group search-box">
+            <span class="input-group-text bg-white">
+                <i class="bi bi-search"></i>
+            </span>
+            <input
+                type="text"
+                name="search"
+                value="{{ search }}"
+                class="form-control"
+                placeholder="Search product by name..."
+                autocomplete="off">
+            <button class="btn btn-primary" type="submit">
+                Search
+            </button>
+        </div>
+    </form>
 
-<form method="post">
+    <!-- Results -->
+    <form method="post">
+        {% csrf_token %}
 
-{% csrf_token %}
+        <div class="card manage-card mb-4">
+            <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center">
+                <span class="fw-semibold">
+                    Search Results
+                    {% if search %}
+                    <span class="badge bg-secondary ms-1">{{ products.count }}</span>
+                    {% endif %}
+                </span>
+                <span class="text-muted small">
+                    All results are pre-selected. Uncheck any you don't want to add.
+                </span>
+            </div>
 
+            <div class="card-body p-0">
+                <table class="table product-table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"></th>
+                            <th>Product</th>
+                            <th class="text-end">Price</th>
+                            <th class="text-center" style="width: 130px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr>
+                            <td>
+                                <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    name="products"
+                                    value="{{ product.item }}"
+                                    checked>
+                            </td>
+                            <td class="fw-semibold">{{ product.product_name }}</td>
+                            <td class="text-end">Rs. {{ product.sales_price }}</td>
+                            <td class="text-center">
+                                {% if product.item in added_items %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle"></i> Already Added
+                                </span>
+                                {% else %}
+                                <span class="badge bg-light text-dark border">New</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-5">
+                                <i class="bi bi-box-seam d-block mb-2" style="font-size: 2rem;"></i>
+                                {% if search %}
+                                No products match your search.
+                                {% else %}
+                                Type a product name above to start searching.
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-{% for product in products %}
-
-<div>
-
-<input
-type="checkbox"
-name="products"
-value="{{ product.id }}"
-checked
->
-
-{{ product.product_name }}
-
--
-Rs. {{ product.sales_price }}
+        {% if products %}
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success px-4">
+                <i class="bi bi-plus-circle me-1"></i> Add Selected Products
+            </button>
+            <a href="{% url 'price_manage' %}" class="btn btn-outline-secondary">
+                Cancel
+            </a>
+        </div>
+        {% endif %}
+    </form>
 
 </div>
-
-
-{% empty %}
-
-No products found
-
-{% endfor %}
-
-
-<br>
-
-
-<button type="submit">
-Add Selected Products
-</button>
-
-
-</form>
-
 
 {% endblock %}

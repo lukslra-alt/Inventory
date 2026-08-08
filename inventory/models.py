@@ -14,7 +14,7 @@ class Product(models.Model):
         - level4
         - hierarchy_path
         - qty
-        - avg_cost
+        - cost
 
     InventoryPro Admin controls:
         - sales_price
@@ -25,10 +25,15 @@ class Product(models.Model):
         - updated_at
     """
 
+    # Primary key — the ONLY unique identifier
+    item = models.CharField(
+        max_length=255,
+        primary_key=True,
+    )
+
+    # Product names are NOT unique
     product_name = models.CharField(
-        max_length=250,
-        unique=True,
-        db_index=True,
+        max_length=255,
     )
 
     category = models.CharField(
@@ -72,7 +77,7 @@ class Product(models.Model):
         default=Decimal("0.00"),
     )
 
-    avg_cost = models.DecimalField(
+    cost = models.DecimalField(
         max_digits=18,
         decimal_places=2,
         default=Decimal("0.00"),
@@ -140,6 +145,7 @@ class Product(models.Model):
     def build_hierarchy_path(self):
         """
         Builds:
+
         CATEGORY > SUBCATEGORY > LEVEL3 > LEVEL4
         """
 
@@ -170,8 +176,10 @@ class Product(models.Model):
 
         if qty <= 0:
             self.status = "NIL"
+
         elif qty < reorder:
             self.status = "LOW"
+
         else:
             self.status = "OK"
 
@@ -180,6 +188,7 @@ class Product(models.Model):
     def save(self, *args, **kwargs):
         self.build_hierarchy_path()
         self.calculate_status()
+
         super().save(*args, **kwargs)
 
 
@@ -225,6 +234,7 @@ class SyncSetting(models.Model):
 
 
 class SyncHistory(models.Model):
+
     STATUS_CHOICES = [
         ("SUCCESS", "Success"),
         ("FAILED", "Failed"),
@@ -244,33 +254,33 @@ class SyncHistory(models.Model):
     )
 
     added_count = models.PositiveIntegerField(
-        default=0
+        default=0,
     )
 
     updated_count = models.PositiveIntegerField(
-        default=0
+        default=0,
     )
 
     restored_count = models.PositiveIntegerField(
-        default=0
+        default=0,
     )
 
     removed_count = models.PositiveIntegerField(
-        default=0
+        default=0,
     )
 
     total_products = models.PositiveIntegerField(
-        default=0
+        default=0,
     )
 
     message = models.TextField(
-        blank=True
+        blank=True,
     )
 
     duration_seconds = models.DecimalField(
         max_digits=8,
         decimal_places=2,
-        default=0
+        default=0,
     )
 
     class Meta:

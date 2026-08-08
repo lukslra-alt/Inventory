@@ -1,71 +1,156 @@
 {% extends "base.html" %}
 
+{% block title %}
+Price List Management
+{% endblock %}
+
 {% block content %}
 
-<div class="price-container">
+<style>
+    .manage-card {
+        border: none;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        border-radius: 12px;
+    }
 
-<h2 class="price-title">
-    Price List Management
-</h2>
+    .stat-card {
+        border: none;
+        border-radius: 12px;
+        color: #fff;
+    }
 
+    .stat-card .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
 
-<a href="{% url 'admin:pricelist_pricepage_add' %}"
-class="btn btn-success">
-+ Add New Category
-</a>
+    .stat-card .stat-label {
+        font-size: 0.85rem;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
 
+    .category-table th {
+        background: #f8f9fa;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #6c757d;
+        border-bottom-width: 2px;
+    }
 
-<br><br>
+    .category-table td {
+        vertical-align: middle;
+    }
 
+    .category-table tbody tr {
+        transition: background-color 0.15s ease;
+    }
 
-<table class="category-table">
+    .category-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+</style>
 
-<tr>
-    <th>Category</th>
-    <th>Products</th>
-    <th>Actions</th>
-</tr>
+<div class="container-fluid p-3">
 
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
+        <div>
+            <h4 class="mb-1 fw-bold">Price List Management</h4>
+            <p class="text-muted mb-0">Manage categories, products and visibility</p>
+        </div>
+        <a href="{% url 'add_category' %}" class="btn btn-success">
+            <i class="bi bi-plus-lg me-1"></i> Add New Category
+        </a>
+    </div>
 
-{% for page in pages %}
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4">
+            <div class="card stat-card bg-primary p-3">
+                <div class="stat-value">{{ total_pages }}</div>
+                <div class="stat-label">Categories</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="card stat-card bg-success p-3">
+                <div class="stat-value">{{ visible_items }}</div>
+                <div class="stat-label">Visible Products</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="card stat-card bg-secondary p-3">
+                <div class="stat-value">{{ total_items }}</div>
+                <div class="stat-label">Total Products</div>
+            </div>
+        </div>
+    </div>
 
-<tr>
-
-<td>
-{{ page.name }}
-</td>
-
-
-<td>
-{{ page.items.count }}
-</td>
-
-
-<td>
-
-<a href="{% url 'admin:pricelist_pricepage_change' page.id %}"
-class="btn btn-primary">
-Edit
-</a>
-
-
-<a href="{% url 'add_products' page.id %}"
-class="btn btn-success">
-Add Products
-</a>
-
-
-</td>
-
-</tr>
-
-{% endfor %}
-
-
-</table>
-
+    <!-- Categories table -->
+    <div class="card manage-card">
+        <div class="card-body p-0">
+            <table class="table category-table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th class="text-center">Products</th>
+                        <th class="text-center">Visible</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for page in pages %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'price_page' page.slug %}"
+                               class="text-decoration-none fw-semibold text-dark">
+                                {{ page.name }}
+                            </a>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-secondary">{{ page.total_items }}</span>
+                        </td>
+                        <td class="text-center">
+                            {% if page.visible_items == page.total_items %}
+                            <span class="badge bg-success">All</span>
+                            {% elif page.visible_items == 0 %}
+                            <span class="badge bg-danger">Hidden</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">{{ page.visible_items }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{% url 'add_products' page.id %}"
+                                   class="btn btn-outline-success">
+                                    <i class="bi bi-plus-lg"></i> Products
+                                </a>
+                                <a href="{% url 'price_page' page.slug %}"
+                                   class="btn btn-outline-primary">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                                <a href="{% url 'admin:pricelist_pricepage_change' page.id %}"
+                                   class="btn btn-outline-secondary">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-5">
+                            No price list categories yet.
+                            <a href="{% url 'add_category' %}"
+                               class="d-block mt-2">Create your first category</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
 </div>
-
 
 {% endblock %}

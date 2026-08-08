@@ -63,12 +63,12 @@
                                 <td>{{ product.qty }}</td>
                                 <td>{{ product.sales_price }}</td>
                                 {% if show_cost %}
-                                <td>{{ product.avg_cost }}</td>
+                                <td>{{ product.cost }}</td>
                                 {% endif %}
                                 {% if is_admin %}
                                 <td><span class="badge bg-secondary">{{ product.status }}</span></td>
                                 <td>
-                                    <a href="{% url 'product_edit' product.id %}" class="btn btn-sm btn-primary">Edit</a>
+                                    <a href="{% url 'product_edit' product.item %}" class="btn btn-sm btn-primary">Edit</a>
                                 </td>
                                 {% endif %}
                             </tr>

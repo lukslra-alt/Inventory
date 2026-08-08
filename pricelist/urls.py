@@ -16,6 +16,12 @@ urlpatterns = [
     ),
 
     path(
+        'add-category/',
+        views.add_category,
+        name='add_category'
+    ),
+
+    path(
         '<slug:slug>/',
         views.price_page,
         name='price_page'

@@ -1,4 +1,9 @@
-{% extends "inventory/base.html" %}
+{% extends "base.html" %}
+
+
+{% block title %}
+Edit Product
+{% endblock %}
 
 
 {% block content %}
@@ -52,7 +57,7 @@ Average Cost
 </label>
 
 <input class="form-control"
-       value="{{ product.avg_cost }}"
+       value="{{ product.cost }}"
        readonly>
 
 </div>
