@@ -35,6 +35,10 @@ urlpatterns = [
 
     path('pricelist/', include('pricelist.urls')),
 
+    path("customers/", include("customers.urls")),
+
+    path("usermanage/", include("usermanage.urls")),
+
 ]
 
 if settings.DEBUG:

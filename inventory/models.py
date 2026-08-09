@@ -204,6 +204,12 @@ class SyncSetting(models.Model):
         default="",
     )
 
+    customer_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+    )
+
     last_sync = models.DateTimeField(
         null=True,
         blank=True,
