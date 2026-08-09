@@ -1,13 +1,13 @@
-const CACHE_NAME = "inventorypro-v7"; // Bumped version structure layer
+const CACHE_NAME = "inventorypro-v8"; // Bumped version structure layer
 const FILES_TO_CACHE = [
     "/",
-    "/staticfiles/inventory/css/bootstrap.min.css",
-    "/staticfiles/inventory/offline-db.js",
-    "/staticfiles/inventory/product-loader.js",
-    "/staticfiles/inventory/network.js",
-    "/staticfiles/inventory/js/bootstrap.bundle.min.js",
-    "/staticfiles/inventory/js/dashboard.js",
-    "/staticfiles/inventory/js/search.js"
+    "/static/inventory/css/bootstrap.min.css",
+    "/static/inventory/offline-db.js",
+    "/static/inventory/product-loader.js",
+    "/static/inventory/network.js",
+    "/static/inventory/js/bootstrap.bundle.min.js",
+    "/static/inventory/js/dashboard.js",
+    "/static/inventory/js/search.js"
 ];
 
 self.addEventListener("install", event => {
