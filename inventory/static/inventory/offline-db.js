@@ -28,8 +28,18 @@ request.onsuccess=function(event){
 };
 
 
+request.onerror = function(event){
+    console.error("IndexedDB open failed:", event);
+};
+
+
 
 function syncProducts(){
+
+    // Database may not be ready yet; skip until it is.
+    if (!db) {
+        return;
+    }
 
 fetch("/offline-products/")
 .then(response=>response.json())
@@ -68,6 +78,9 @@ new Date().toLocaleString()
 );
 
 
+})
+.catch(error=>{
+    console.error("Offline products sync failed:", error);
 });
 
 }
