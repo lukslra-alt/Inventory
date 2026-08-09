@@ -10,6 +10,7 @@ from django.contrib import messages
 from .models import Product, SyncSetting
 from .forms import ProductAdminForm
 from inventory.services.category_tree import get_category_tree
+from usermanage.roles import admin_required
 
 
 def apply_product_filters(products, search="", category="", subcategory="", level3="", level4=""):
@@ -38,6 +39,9 @@ def dashboard(request):
     """
     Main dashboard controller loading paginated HTML inventory states.
     """
+    if not request.user.is_staff:
+        return redirect("customer_list")
+
     products = Product.objects.filter(active=True)
     search = request.GET.get("search", "").strip()
     category = request.GET.get("category", "")
@@ -70,14 +74,14 @@ def dashboard(request):
         "low_stock": Product.objects.filter(active=True, status="LOW").count(),
         "nil_stock": Product.objects.filter(active=True, status="NIL").count(),
         "sync_setting": SyncSetting.objects.first(),
-        "show_cost": request.user.is_staff,
-        "is_admin": request.user.is_staff,
+        "show_cost": request.user.is_superuser,
+        "is_admin": request.user.is_superuser,
         "query_string": query_string,
     }
     return render(request, "inventory/dashboard.html", context)
 
 
-@login_required
+@staff_member_required
 def search_products(request):
     """
     Unified asynchronous clean JSON API reflecting exact dashboard filters.
@@ -98,19 +102,21 @@ def search_products(request):
     data = []
     # Bound return limit to 50 for rapid client-side DOM processing
     for product in products[:50]:
-        data.append({
+        entry = {
             "id": product.item,
             "name": product.product_name,
             "qty": product.qty,
             "price": str(product.sales_price),
-            "cost": str(product.cost) if hasattr(product, "cost") else "0.00",
             "status": product.status,
-        })
+        }
+        if request.user.is_superuser and hasattr(product, "cost"):
+            entry["cost"] = str(product.cost)
+        data.append(entry)
 
     return JsonResponse({"products": data})
 
 
-@staff_member_required
+@admin_required
 def product_edit(request, pk):
     product = get_object_or_404(Product, item=pk, active=True)
     if request.method == "POST":
@@ -131,11 +137,12 @@ def product_edit(request, pk):
     )
 
 
-@staff_member_required
+@admin_required
 def manual_sync(request):
     try:
         call_command("sync_inventory")
-        messages.success(request, "Inventory sync completed.")
+        call_command("sync_customers")
+        messages.success(request, "Inventory and customer sync completed.")
     except Exception as error:
         messages.error(request, f"Sync failed: {error}")
     return redirect("dashboard")
@@ -143,5 +150,11 @@ def manual_sync(request):
 
 @staff_member_required
 def offline_products(request):
-    products = Product.objects.all().values("item", "product_name", "category", "sales_price")
+    fields = [
+        "item", "product_name", "category", "subcategory", "level3", "level4",
+        "hierarchy_path", "sales_price", "qty", "status",
+    ]
+    if request.user.is_superuser:
+        fields.append("cost")
+    products = Product.objects.filter(active=True).values(*fields)
     return JsonResponse(list(products), safe=False)

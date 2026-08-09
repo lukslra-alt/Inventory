@@ -33,14 +33,24 @@
 <nav class="navbar navbar-dark bg-dark">
     <div class="container">
     <div class="navbar-left">
+        {% if request.user.is_staff %}
         <a class="navbar-brand" href="{% url 'dashboard' %}">
             📦 InventoryPro
         </a>
+        {% endif %}
         <a class="navbar-brand" href="{% url 'price_categories' %}">
             💲PriceList
         </a>
+        <a class="navbar-brand" href="{% url 'customer_list' %}">
+            👥Customers
+        </a>
+        {% if request.user.is_superuser %}
+        <a class="navbar-brand" href="{% url 'usermanage:user_list' %}">
+            👤Users
+        </a>
+        {% endif %}
     </div>
-        {% if request.user.is_staff %}
+        {% if request.user.is_superuser %}
 
         <a href="{% url 'manual_sync' %}"
            class="btn btn-warning btn-sm me-2"

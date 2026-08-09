@@ -15,6 +15,9 @@ class DashboardViewTests(TestCase):
         self.user = User.objects.create_user(
             username="staff", password="pass", is_staff=True
         )
+        self.admin = User.objects.create_user(
+            username="admin", password="pass", is_staff=True, is_superuser=True
+        )
         self.nonstaff = User.objects.create_user(
             username="viewer", password="pass"
         )
@@ -65,11 +68,17 @@ class DashboardViewTests(TestCase):
     def test_nonstaff_sees_no_cost(self):
         self.client.force_login(self.nonstaff)
         response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("customer_list"))
+
+    def test_staff_sees_no_cost(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("dashboard"))
         self.assertFalse(response.context["show_cost"])
         self.assertFalse(response.context["is_admin"])
 
-    def test_staff_sees_cost(self):
-        self.client.force_login(self.user)
+    def test_admin_sees_cost(self):
+        self.client.force_login(self.admin)
         response = self.client.get(reverse("dashboard"))
         self.assertTrue(response.context["show_cost"])
         self.assertTrue(response.context["is_admin"])
@@ -80,6 +89,9 @@ class SearchProductsViewTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
             username="staff", password="pass", is_staff=True
+        )
+        self.admin = User.objects.create_user(
+            username="admin", password="pass", is_staff=True, is_superuser=True
         )
         self.product = Product.objects.create(
             item="Tools:Power",
@@ -96,7 +108,7 @@ class SearchProductsViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
 
     def test_returns_json_products(self):
-        self.client.force_login(self.user)
+        self.client.force_login(self.admin)
         response = self.client.get(reverse("search_products"))
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
@@ -108,6 +120,12 @@ class SearchProductsViewTests(TestCase):
         self.assertEqual(product["price"], "100.00")
         self.assertEqual(product["cost"], "50.00")
         self.assertEqual(product["status"], "LOW")
+
+    def test_staff_does_not_get_cost(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("search_products"))
+        data = json.loads(response.content)
+        self.assertNotIn("cost", data["products"][0])
 
     def test_filters_by_q_parameter(self):
         self.client.force_login(self.user)
@@ -143,6 +161,9 @@ class ProductEditViewTests(TestCase):
         self.user = User.objects.create_user(
             username="staff", password="pass", is_staff=True
         )
+        self.admin = User.objects.create_user(
+            username="admin", password="pass", is_staff=True, is_superuser=True
+        )
         self.nonstaff = User.objects.create_user(
             username="viewer", password="pass"
         )
@@ -160,8 +181,15 @@ class ProductEditViewTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
 
-    def test_get_renders_form(self):
+    def test_staff_redirected(self):
         self.client.force_login(self.user)
+        response = self.client.get(
+            reverse("product_edit", args=[self.product.item])
+        )
+        self.assertEqual(response.status_code, 302)
+
+    def test_get_renders_form(self):
+        self.client.force_login(self.admin)
         response = self.client.get(
             reverse("product_edit", args=[self.product.item])
         )
@@ -169,7 +197,7 @@ class ProductEditViewTests(TestCase):
         self.assertContains(response, "Drill")
 
     def test_post_updates_product(self):
-        self.client.force_login(self.user)
+        self.client.force_login(self.admin)
         response = self.client.post(
             reverse("product_edit", args=[self.product.item]),
             {"sales_price": "120.00", "reorder_qty": "8.00"},
@@ -180,7 +208,7 @@ class ProductEditViewTests(TestCase):
         self.assertEqual(self.product.reorder_qty, Decimal("8.00"))
 
     def test_post_invalid_form_rerenders(self):
-        self.client.force_login(self.user)
+        self.client.force_login(self.admin)
         response = self.client.post(
             reverse("product_edit", args=[self.product.item]),
             {"sales_price": "-5", "reorder_qty": "5"},
@@ -194,11 +222,15 @@ class OfflineProductsViewTests(TestCase):
         self.user = User.objects.create_user(
             username="staff", password="pass", is_staff=True
         )
+        self.admin = User.objects.create_user(
+            username="admin", password="pass", is_staff=True, is_superuser=True
+        )
         self.product = Product.objects.create(
             item="Tools:Power",
             product_name="Drill",
             category="Tools",
             sales_price=Decimal("100.00"),
+            cost=Decimal("50.00"),
         )
 
     def test_requires_staff(self):
@@ -215,12 +247,27 @@ class OfflineProductsViewTests(TestCase):
         self.assertNotIn("id", data[0])
         self.assertEqual(data[0]["item"], "Tools:Power")
 
+    def test_staff_does_not_get_cost(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("offline_products"))
+        data = json.loads(response.content)
+        self.assertNotIn("cost", data[0])
+
+    def test_admin_gets_cost(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("offline_products"))
+        data = json.loads(response.content)
+        self.assertIn("cost", data[0])
+
 
 class ManualSyncViewTests(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(
             username="staff", password="pass", is_staff=True
+        )
+        self.admin = User.objects.create_user(
+            username="admin", password="pass", is_staff=True, is_superuser=True
         )
         self.nonstaff = User.objects.create_user(
             username="viewer", password="pass"
@@ -231,17 +278,23 @@ class ManualSyncViewTests(TestCase):
         response = self.client.get(reverse("manual_sync"))
         self.assertEqual(response.status_code, 302)
 
-    @patch("inventory.views.call_command")
-    def test_success_redirects_with_message(self, mock_call):
+    def test_staff_redirected(self):
         self.client.force_login(self.user)
         response = self.client.get(reverse("manual_sync"))
-        mock_call.assert_called_once_with("sync_inventory")
+        self.assertEqual(response.status_code, 302)
+
+    @patch("inventory.views.call_command")
+    def test_success_redirects_with_message(self, mock_call):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("manual_sync"))
+        mock_call.assert_any_call("sync_inventory")
+        mock_call.assert_any_call("sync_customers")
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("dashboard"))
 
     @patch("inventory.views.call_command", side_effect=Exception("boom"))
     def test_failure_redirects_with_error_message(self, mock_call):
-        self.client.force_login(self.user)
+        self.client.force_login(self.admin)
         response = self.client.get(reverse("manual_sync"))
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("dashboard"))

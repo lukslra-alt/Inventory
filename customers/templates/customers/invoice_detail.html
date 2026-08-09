@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}
+Invoice {{ invoice.invoice_number }} - InventoryPro
+{% endblock %}
+
+{% block content %}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{% url 'customer_list' %}">
+                Customers
+            </a>
+        </li>
+
+    <li class="breadcrumb-item">
+        <a href="{% url 'customer_detail' invoice.customer.pk %}">
+            {{ invoice.customer.name }}
+        </a>
+    </li>
+
+    <li class="breadcrumb-item active">
+        {{ invoice.invoice_number }}
+    </li>
+</ol>
+
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">
+        Invoice {{ invoice.invoice_number }}
+    </h1>
+
+<a
+    class="btn btn-primary"
+    href="{% url 'invoice_pdf' invoice.invoice_number %}"
+    target="_blank"
+>
+    Download PDF
+</a>
+
+</div>
+
+<!-- Invoice Information -->
+
+<table class="table table-sm w-auto mb-4">
+    <tr>
+        <th>Customer</th>
+        <td>{{ invoice.customer.name }}</td>
+    </tr>
+
+<tr>
+    <th>Date</th>
+    <td>
+        {% if invoice.date %}
+            {{ invoice.date|date:"d/m/Y" }}
+        {% else %}
+            -
+        {% endif %}
+    </td>
+</tr>
+
+<tr>
+    <th>Invoice No.</th>
+    <td>{{ invoice.invoice_number }}</td>
+</tr>
+
+</table>
+
+<!-- Invoice Items -->
+
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>#</th>
+                <th>Item</th>
+                <th class="text-end">Qty</th>
+                <th class="text-end">Sales Price</th>
+                <th class="text-end">Amount</th>
+            </tr>
+        </thead>
+
+    <tbody>
+        {% for item in invoice.items.all %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+
+            <td>
+                {{ item.description|default:"-" }}
+            </td>
+
+            <td class="text-end">
+                {{ item.qty }}
+            </td>
+
+            <td class="text-end">
+                {{ item.sales_price|floatformat:2 }}
+            </td>
+
+            <td class="text-end">
+                {{ item.amount|floatformat:2 }}
+            </td>
+        </tr>
+
+        {% empty %}
+        <tr>
+            <td colspan="5" class="text-center text-muted">
+                No items in this invoice.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+
+
+    <tfoot>
+        <!-- Total Quantity -->
+        <tr class="table-light">
+            <th colspan="4" class="text-end">
+                Total Quantity
+            </th>
+
+            <th class="text-end">
+                {{ invoice.total_qty|floatformat:2 }}
+            </th>
+        </tr>
+
+
+        <!-- Total Amount -->
+        <tr class="table-light">
+            <th colspan="4" class="text-end">
+                Total
+            </th>
+
+            <th class="text-end">
+                {{ invoice.total_amount|floatformat:2 }}
+            </th>
+        </tr>
+
+
+        <!-- Balance -->
+        <tr class="table-light">
+            <th colspan="4" class="text-end">
+                Balance
+            </th>
+
+            <th class="text-end">
+                {{ invoice.balance|floatformat:2 }}
+            </th>
+        </tr>
+    </tfoot>
+
+</table>
+
+</div>
+
+{% endblock %}

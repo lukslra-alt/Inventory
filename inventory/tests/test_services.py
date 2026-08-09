@@ -3,9 +3,13 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
-from inventory.models import Product
+from inventory.models import Product, SyncHistory, SyncSetting
 from inventory.services.category_tree import get_category_tree
-from inventory.services.google_client import download_google_sheet
+from inventory.services.google_client import (
+    download_customer_csv,
+    download_google_sheet,
+)
+from inventory.services.google_sync import sync_inventory
 from inventory.services.qb_parser import QuickBooksParser
 from inventory.services.sync_engine import sync_products
 
@@ -296,3 +300,91 @@ class GoogleClientTests(TestCase):
 
         self.assertFalse(result["success"])
         self.assertIn("error", result)
+
+
+class CustomerDownloadTests(TestCase):
+
+    @patch("inventory.services.google_client.requests.get")
+    def test_download_customer_csv_success(self, mock_get):
+        mock_get.return_value.raise_for_status = lambda: None
+        mock_get.return_value.content = b"customer,data\r\n"
+
+        result = download_customer_csv()
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["size"], len(b"customer,data\r\n"))
+        self.assertIn("filepath", result)
+        self.assertEqual(len(result["hash"]), 64)
+
+    @patch("inventory.services.google_client.requests.get")
+    def test_download_customer_csv_failure(self, mock_get):
+        import requests
+
+        mock_get.side_effect = requests.RequestException("network down")
+
+        result = download_customer_csv()
+
+        self.assertFalse(result["success"])
+        self.assertIn("error", result)
+
+
+class GoogleSyncTests(TestCase):
+
+    @patch("inventory.services.google_sync.sync_products")
+    @patch("inventory.services.google_sync.QuickBooksParser")
+    @patch("inventory.services.google_client.requests.get")
+    def test_sync_runs_when_hash_changed(
+        self,
+        mock_get,
+        mock_parser,
+        mock_sync_products,
+    ):
+        mock_get.return_value.raise_for_status = lambda: None
+        mock_get.return_value.content = b"sheet-bytes-v2"
+
+        mock_parser.return_value.parse.return_value = []
+        mock_sync_products.return_value = {
+            "added": 1,
+            "updated": 0,
+            "restored": 0,
+            "removed": 0,
+            "total_products": 1,
+        }
+
+        setting = SyncSetting.objects.create()
+
+        result = sync_inventory()
+
+        self.assertFalse(result["skipped"])
+        self.assertEqual(result["added"], 1)
+        mock_sync_products.assert_called_once()
+
+        setting.refresh_from_db()
+        self.assertNotEqual(setting.sheet_hash, "")
+        self.assertEqual(
+            SyncHistory.objects.filter(status="SUCCESS").count(),
+            1,
+        )
+
+    @patch("inventory.services.google_client.requests.get")
+    def test_sync_skips_when_hash_unchanged(self, mock_get):
+        import hashlib
+
+        content = b"fixture-bytes"
+        mock_get.return_value.raise_for_status = lambda: None
+        mock_get.return_value.content = content
+
+        file_hash = hashlib.sha256(content).hexdigest()
+
+        SyncSetting.objects.create(
+            sheet_hash=file_hash,
+        )
+
+        result = sync_inventory()
+
+        self.assertTrue(result["skipped"])
+        self.assertEqual(result["added"], 0)
+        self.assertEqual(
+            SyncHistory.objects.filter(status="SKIPPED").count(),
+            1,
+        )

@@ -44,6 +44,8 @@ INSTALLED_APPS = [
     "accounts",
     "adminsortable2",
     "pricelist",
+    "customers",
+    "usermanage",
 ]
 
 MIDDLEWARE = [

@@ -4,3 +4,4 @@ numpy==2.5.1
 pandas==3.0.5
 requests==2.34.2
 whitenoise==6.8.2
+reportlab==5.0.0

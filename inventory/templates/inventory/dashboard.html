@@ -8,6 +8,14 @@
     .product-card { transition: 0.2s; }
     .product-card:hover { transform: scale(1.01); }
     .category-box { max-height: 80vh; overflow-y: auto; }
+    #productList .table-responsive { overflow-x: auto; }
+    #productList table.table { table-layout: fixed; width: 100%; }
+    #productList table.table th,
+    #productList table.table td {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 </style>
 
 <div class="container-fluid p-3">
@@ -59,7 +67,7 @@
                         <tbody>
                             {% for product in page_obj %}
                             <tr>
-                                <td>{{ product.product_name }}</td>
+                                <td title="{{ product.product_name }}">{{ product.product_name }}</td>
                                 <td>{{ product.qty }}</td>
                                 <td>{{ product.sales_price }}</td>
                                 {% if show_cost %}

@@ -1,86 +1,92 @@
 import os
 
+from django.utils import timezone
+
 from inventory.services.google_client import download_google_sheet
 from inventory.services.qb_parser import QuickBooksParser
 from inventory.services.sync_engine import sync_products
-from inventory.models import SyncHistory
+from inventory.models import SyncHistory, SyncSetting
+
+
+def _get_setting():
+    setting = SyncSetting.objects.first()
+    if setting is None:
+        setting = SyncSetting.objects.create()
+    return setting
 
 
 def sync_inventory():
-    # Download Google Sheet
+    setting = _get_setting()
 
     download = download_google_sheet()
 
     if not download["success"]:
         SyncHistory.objects.create(
             status="FAILED",
-            message=download["error"]
+            message=download["error"],
         )
 
-        raise Exception(
-            download["error"]
-        )
+        raise Exception(download["error"])
 
     filepath = download["filepath"]
 
     try:
+        file_hash = download["hash"]
 
-        # Parse Excel
+        if setting.sheet_hash == file_hash:
+            SyncHistory.objects.create(
+                status="SKIPPED",
+                message="Inventory sheet unchanged - no sync needed.",
+            )
 
-        parser = QuickBooksParser(
-            filepath
-        )
+            return {
+                "skipped": True,
+                "added": 0,
+                "updated": 0,
+                "restored": 0,
+                "removed": 0,
+                "total_products": 0,
+            }
+
+        parser = QuickBooksParser(filepath)
 
         products = parser.parse()
 
-        # Sync database
+        result = sync_products(products)
 
-        result = sync_products(
-            products
-        )
-
-        # Save history
+        setting.sheet_hash = file_hash
+        setting.last_sync = timezone.now()
+        setting.total_products = result["total_products"]
+        setting.added = result["added"]
+        setting.updated = result["updated"]
+        setting.restored = result["restored"]
+        setting.removed = result["removed"]
+        setting.save()
 
         SyncHistory.objects.create(
-
             added_count=result["added"],
-
             updated_count=result["updated"],
-
             restored_count=result["restored"],
-
             removed_count=result["removed"],
-
             status="SUCCESS",
-
             message=(
                 f"Processed "
                 f"{result['total_products']} products"
-            )
-
+            ),
         )
+
+        result["skipped"] = False
 
         return result
 
-
-
     except Exception as error:
-
         SyncHistory.objects.create(
-
             status="FAILED",
-
-            message=str(error)
-
+            message=str(error),
         )
 
         raise
 
-
-
     finally:
-
-        # Remove temporary file
-
         if os.path.exists(filepath):
             os.remove(filepath)
