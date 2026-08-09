@@ -6,3 +6,6 @@ temp/
 # Python bytecode
 __pycache__/
 *.py[cod]
+
+# Collected static (collectstatic output)
+staticfiles/
