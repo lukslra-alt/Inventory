@@ -65,6 +65,11 @@ function loadProducts(){
 
 function loadOfflineProducts(){
 
+    // IndexedDB may not be ready yet (open() is async) or unavailable.
+    if (!db) {
+        return;
+    }
+
     let transaction =
     db.transaction(
         "products",
