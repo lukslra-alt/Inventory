@@ -1,4 +1,7 @@
 from io import BytesIO
+from pathlib import Path
+
+from django.conf import settings
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
@@ -15,6 +18,22 @@ from reportlab.platypus import (
 )
 
 from customers.models import Invoice
+
+
+def _logo_path():
+    """Locate the logo image, falling back to a setting or media dir."""
+    candidates = []
+    configured = getattr(settings, "LOGO_PATH", "")
+    if configured:
+        candidates.append(Path(configured))
+    candidates.append(Path(settings.MEDIA_ROOT) / "logo.png")
+    candidates.append(Path(settings.BASE_DIR) / "static" / "logo.png")
+    candidates.append(Path(r"E:\logo.png"))
+
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    return None
 
 
 def _money(value):
@@ -201,16 +220,21 @@ def invoice_pdf(invoice_number):
         else "-"
     )
 
-    logo = Image(
-        r"E:\logo.png",
-        width=75 * mm,
-        height=75 * mm * (223.0 / 631.0),
-    )
+    logo = None
+    logo_path = _logo_path()
+    if logo_path:
+        logo = Image(
+            logo_path,
+            width=75 * mm,
+            height=75 * mm * (223.0 / 631.0),
+        )
 
-    logo_cell = [
-        logo,
-        Spacer(1, 4 * mm),
+    logo_cell = []
+    if logo:
+        logo_cell.append(logo)
+        logo_cell.append(Spacer(1, 4 * mm))
 
+    logo_cell.extend([
         Paragraph("Invoice", styles["InvoiceTitle"]),
 
         Spacer(1, 4 * mm),
@@ -226,7 +250,7 @@ def invoice_pdf(invoice_number):
             f"<b>Invoice No :</b> {invoice.invoice_number}",
             styles["NormalText"],
         ),
-    ]
+    ])
 
     header_table = Table(
         [
