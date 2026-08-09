@@ -7,6 +7,9 @@ temp/
 __pycache__/
 *.py[cod]
 
+# Collected static (collectstatic output)
+staticfiles/
+
 # Test files — kept on develop, stripped from the production branch
 **/tests.py
 **/tests/
