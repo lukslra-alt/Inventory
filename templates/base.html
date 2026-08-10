@@ -144,7 +144,7 @@
                 <h5 class="modal-title" id="pdfModalLabel">Invoice PDF</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0 d-flex">
+            <div class="modal-body p-0 d-flex" style="min-height: 70vh;">
                 <iframe id="pdfFrame"
                         title="Invoice PDF"
                         style="width:100%; height:100%; border:0; flex:1 1 auto;"></iframe>
@@ -190,18 +190,41 @@
     <script src="{% static 'inventory/js/search.js' %}"></script>
     <script>
         // Open an invoice PDF in the in-app modal (works in iOS standalone PWA,
-        // where navigating to the PDF directly leaves no back button).
+        // where navigating to the PDF directly leaves no back button). The PDF is
+        // fetched as a blob because iOS Safari does not render a raw PDF URL in an iframe.
         function openPdf(url) {
             const modalEl = document.getElementById("pdfModal");
             const frame = document.getElementById("pdfFrame");
             if (!modalEl || !frame || !window.bootstrap) return false;
-            frame.src = url;
+
+            frame.src = "";
             bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+            fetch(url)
+                .then(function (response) {
+                    if (!response.ok) throw new Error("PDF fetch failed");
+                    return response.blob();
+                })
+                .then(function (blob) {
+                    if (frame._blobUrl) URL.revokeObjectURL(frame._blobUrl);
+                    frame._blobUrl = URL.createObjectURL(blob);
+                    frame.src = frame._blobUrl;
+                })
+                .catch(function (error) {
+                    console.error("PDF load error:", error);
+                    frame.src = url;
+                });
+
             return false;
         }
         document.addEventListener("hidden.bs.modal", function (e) {
             if (e.target && e.target.id === "pdfModal") {
-                document.getElementById("pdfFrame").src = "";
+                const frame = document.getElementById("pdfFrame");
+                if (frame._blobUrl) {
+                    URL.revokeObjectURL(frame._blobUrl);
+                    frame._blobUrl = null;
+                }
+                frame.src = "";
             }
         });
     </script>
