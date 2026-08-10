@@ -60,8 +60,7 @@
             <td class="text-end">
                 <a class="btn btn-sm btn-outline-secondary"
                    href="{% url 'invoice_pdf' invoice.invoice_number %}"
-                   target="_blank"
-                   rel="noopener">
+                   onclick="return openPdf(this.href);">
                     PDF
                 </a>
             </td>

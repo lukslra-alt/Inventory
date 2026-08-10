@@ -27,6 +27,12 @@ Edit {{ page.name }} - InventoryPro
     }
     #pageEditor tbody tr.sortable-row {
         cursor: grab;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+    }
+    #pageEditor tbody tr.sortable-row td:first-child {
+        touch-action: none;
     }
     @media (min-width: 768px) {
         #pageEditor table.table th:nth-child(2),
@@ -302,6 +308,56 @@ Edit {{ page.name }} - InventoryPro
         tbody.addEventListener("dragend", function (e) {
             e.target.classList.remove("dragging");
             dragRow = null;
+        });
+    }
+
+    // ---- Touch drag support (iOS Safari does not support HTML5 drag-and-drop) ----
+    let touchDragRow = null;
+
+    function rowAtTouchY(y) {
+        const rows = tbody.querySelectorAll("tr.sortable-row");
+        for (let i = 0; i < rows.length; i++) {
+            const rect = rows[i].getBoundingClientRect();
+            if (y >= rect.top && y <= rect.bottom) {
+                return { row: rows[i], after: (y - rect.top) > (rect.height / 2) };
+            }
+        }
+        return null;
+    }
+
+    if (tbody) {
+        tbody.addEventListener("touchstart", function (e) {
+            const handle = e.target.closest(".bi-grip-vertical");
+            if (!handle) return;
+            const row = handle.closest("tr.sortable-row");
+            if (!row) return;
+            touchDragRow = row;
+            row.classList.add("dragging");
+        }, { passive: true });
+
+        tbody.addEventListener("touchmove", function (e) {
+            if (!touchDragRow) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const target = rowAtTouchY(touch.clientY);
+            if (!target || target.row === touchDragRow) return;
+            if (target.after) {
+                target.row.after(touchDragRow);
+            } else {
+                target.row.before(touchDragRow);
+            }
+        }, { passive: false });
+
+        tbody.addEventListener("touchend", function () {
+            if (!touchDragRow) return;
+            touchDragRow.classList.remove("dragging");
+            touchDragRow = null;
+        });
+
+        tbody.addEventListener("touchcancel", function () {
+            if (!touchDragRow) return;
+            touchDragRow.classList.remove("dragging");
+            touchDragRow = null;
         });
     }
 

@@ -37,7 +37,7 @@ Invoice {{ invoice.invoice_number }} - InventoryPro
 <a
     class="btn btn-primary"
     href="{% url 'invoice_pdf' invoice.invoice_number %}"
-    target="_blank"
+    onclick="return openPdf(this.href);"
 >
     Download PDF
 </a>
