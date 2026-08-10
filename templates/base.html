@@ -146,6 +146,19 @@
                 );
             });
         }
+
+        // In the iOS home-screen app (standalone mode) target="_blank" still
+        // navigates inside the app with no back button. Route those links to
+        // Safari instead so the app stays where it was.
+        if (navigator.standalone === true) {
+            document.addEventListener("click", function (event) {
+                const anchor = event.target.closest("a");
+                if (anchor && anchor.target === "_blank") {
+                    event.preventDefault();
+                    window.open(anchor.href, "_blank");
+                }
+            });
+        }
     </script>
 <!-- Core Offline Functionality Engines -->
     <script src="{% static 'inventory/network.js' %}"></script>
