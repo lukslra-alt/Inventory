@@ -69,13 +69,15 @@ Add Products - {{ page.name }}
             <span class="input-group-text bg-white">
                 <i class="bi bi-search"></i>
             </span>
-            <input
-                type="text"
-                name="search"
-                value="{{ search }}"
-                class="form-control"
-                placeholder="Search product by name..."
-                autocomplete="off">
+            <label>
+                <input
+                    type="text"
+                    name="search"
+                    value="{{ search }}"
+                    class="form-control"
+                    placeholder="Search product by name..."
+                    autocomplete="off">
+            </label>
             <button class="btn btn-primary" type="submit">
                 Search
             </button>
@@ -113,12 +115,14 @@ Add Products - {{ page.name }}
                         {% for product in products %}
                         <tr>
                             <td>
-                                <input
-                                    class="form-check-input"
-                                    type="checkbox"
-                                    name="products"
-                                    value="{{ product.item }}"
-                                    checked>
+                                <label>
+                                    <input
+                                        class="form-check-input"
+                                        type="checkbox"
+                                        name="products"
+                                        value="{{ product.item }}"
+                                        checked>
+                                </label>
                             </td>
                             <td class="fw-semibold">{{ product.product_name }}</td>
                             <td class="text-end">Rs. {{ product.sales_price }}</td>

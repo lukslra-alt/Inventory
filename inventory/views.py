@@ -7,7 +7,7 @@ from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 
-from .models import Product, SyncSetting
+from .models import Product, SyncSetting, SyncHistory
 from .forms import ProductAdminForm
 from inventory.services.category_tree import get_category_tree
 from usermanage.roles import admin_required
@@ -145,7 +145,41 @@ def manual_sync(request):
         messages.success(request, "Inventory and customer sync completed.")
     except Exception as error:
         messages.error(request, f"Sync failed: {error}")
-    return redirect("dashboard")
+    return redirect("sync_page")
+
+
+@admin_required
+def sync_page(request):
+    setting = SyncSetting.objects.first()
+
+    return render(
+        request,
+        "inventory/sync_page.html",
+        {
+            "sync_setting": setting,
+            "history": SyncHistory.objects.order_by("-sync_time")[:20],
+        }
+    )
+
+
+@admin_required
+def sync_products(request):
+    try:
+        call_command("sync_inventory")
+        messages.success(request, "Product sync completed.")
+    except Exception as error:
+        messages.error(request, f"Product sync failed: {error}")
+    return redirect("sync_page")
+
+
+@admin_required
+def sync_customers(request):
+    try:
+        call_command("sync_customers")
+        messages.success(request, "Customer sync completed.")
+    except Exception as error:
+        messages.error(request, f"Customer sync failed: {error}")
+    return redirect("sync_page")
 
 
 @staff_member_required

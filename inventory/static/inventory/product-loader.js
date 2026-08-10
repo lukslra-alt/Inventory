@@ -53,10 +53,10 @@ function displayProducts(products) {
                 <thead class="table-dark">
                     <tr>
                         <th>Product</th>
-                        <th>Qty</th>
+                        <th class="col-qty">Qty</th>
                         <th>Price</th>
                         ${showCost ? "<th>Cost</th>" : ""}
-                        ${isAdmin ? "<th>Status</th><th>Action</th>" : ""}
+                        ${isAdmin ? "<th class=\"col-status\">Status</th><th class=\"col-action\">Action</th>" : ""}
                     </tr>
                 </thead>
                 <tbody>
@@ -67,12 +67,12 @@ function displayProducts(products) {
         html += `
             <tr>
                 <td title="${name}">${name}</td>
-                <td>${product.qty}</td>
+                <td class="col-qty">${product.qty}</td>
                 <td>${product.sales_price || product.price || "0.00"}</td>
                 ${showCost ? `<td>${product.cost || "0.00"}</td>` : ""}
                 ${isAdmin ? `
-                    <td><span class="badge bg-secondary">${product.status || "OK"}</span></td>
-                    <td>
+                    <td class="col-status"><span class="badge bg-secondary">${product.status || "OK"}</span></td>
+                    <td class="col-action">
                         <a href="/product/${product.item || product.id}/edit/" class="btn btn-sm btn-primary">Edit</a>
                     </td>
                 ` : ""}

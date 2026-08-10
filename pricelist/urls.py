@@ -28,6 +28,30 @@ urlpatterns = [
     ),
 
     path(
+        'edit/<int:page_id>/',
+        views.edit_page,
+        name='edit_page'
+    ),
+
+    path(
+        'reorder/<int:page_id>/',
+        views.reorder_page,
+        name='reorder_page'
+    ),
+
+    path(
+        'toggle/<int:page_id>/',
+        views.toggle_item,
+        name='toggle_item'
+    ),
+
+    path(
+        'remove/<int:page_id>/',
+        views.remove_item,
+        name='remove_item'
+    ),
+
+    path(
         'add-products/<int:page_id>/',
         views.add_products,
         name='add_products'

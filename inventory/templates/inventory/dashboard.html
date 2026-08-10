@@ -5,8 +5,7 @@
 <!-- Custom Local View Styles -->
 <style>
     body { background: #f8f9fa; }
-    .product-card { transition: 0.2s; }
-    .product-card:hover { transform: scale(1.01); }
+
     .category-box { max-height: 80vh; overflow-y: auto; }
     #productList .table-responsive { overflow-x: auto; }
     #productList table.table { table-layout: fixed; width: 100%; }
@@ -15,6 +14,34 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+    #productList table.table td:first-child {
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+    }
+    @media (min-width: 768px) {
+        #productList table.table th:first-child,
+        #productList table.table td:first-child { width: 50%; }
+    }
+    @media (max-width: 767.98px) {
+        #productList table.table th,
+        #productList table.table td {
+            font-size: 0.8rem;
+            padding: 0.35rem 0.4rem;
+        }
+        #productList table.table th:first-child,
+        #productList table.table td:first-child {
+            width: 30%;
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+        }
+        #productList table.table { min-width: 640px; }
+        #productList .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
     }
 </style>
 
@@ -43,7 +70,7 @@
         <div class="col-md-9">
             <!-- SEARCH INPUT -->
             <div class="mb-3">
-                <input type="text" id="searchBox" class="form-control" placeholder="Search products..." autocomplete="off">
+                <label for="searchBox"></label><input type="text" id="searchBox" class="form-control" placeholder="Search products..." autocomplete="off">
             </div>
 
             <!-- PRODUCT LIST ASYNC WRAPPER -->
@@ -53,14 +80,14 @@
                         <thead class="table-dark">
                             <tr>
                                 <th>Product</th>
-                                <th>Qty</th>
+                                <th class="col-qty">Qty</th>
                                 <th>Price</th>
                                 {% if show_cost %}
                                 <th>Cost</th>
                                 {% endif %}
                                 {% if is_admin %}
-                                <th>Status</th>
-                                <th>Action</th>
+                                <th class="col-status">Status</th>
+                                <th class="col-action">Action</th>
                                 {% endif %}
                             </tr>
                         </thead>
@@ -68,14 +95,14 @@
                             {% for product in page_obj %}
                             <tr>
                                 <td title="{{ product.product_name }}">{{ product.product_name }}</td>
-                                <td>{{ product.qty }}</td>
+                                <td class="col-qty">{{ product.qty }}</td>
                                 <td>{{ product.sales_price }}</td>
                                 {% if show_cost %}
                                 <td>{{ product.cost }}</td>
                                 {% endif %}
                                 {% if is_admin %}
-                                <td><span class="badge bg-secondary">{{ product.status }}</span></td>
-                                <td>
+                                <td class="col-status"><span class="badge bg-secondary">{{ product.status }}</span></td>
+                                <td class="col-action">
                                     <a href="{% url 'product_edit' product.item %}" class="btn btn-sm btn-primary">Edit</a>
                                 </td>
                                 {% endif %}
