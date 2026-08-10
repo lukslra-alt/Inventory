@@ -144,10 +144,8 @@
                 <h5 class="modal-title" id="pdfModalLabel">Invoice PDF</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0 d-flex" style="min-height: 70vh;">
-                <iframe id="pdfFrame"
-                        title="Invoice PDF"
-                        style="width:100%; height:100%; border:0; flex:1 1 auto;"></iframe>
+            <div class="modal-body p-0" style="overflow: auto; -webkit-overflow-scrolling: touch;">
+                <div id="pdfContainer" class="p-2"></div>
             </div>
         </div>
     </div>
@@ -189,42 +187,82 @@
     <script src="{% static 'inventory/js/dashboard.js' %}"></script>
     <script src="{% static 'inventory/js/search.js' %}"></script>
     <script>
-        // Open an invoice PDF in the in-app modal (works in iOS standalone PWA,
-        // where navigating to the PDF directly leaves no back button). The PDF is
-        // fetched as a blob because iOS Safari does not render a raw PDF URL in an iframe.
+        // Load PDF.js on demand (lazy) so it isn't fetched on every page.
+        function loadPdfJs() {
+            return new Promise(function (resolve, reject) {
+                if (window.pdfjsLib) {
+                    resolve();
+                    return;
+                }
+                const script = document.createElement("script");
+                script.src = "{% static 'inventory/js/pdfjs/pdf.min.js' %}";
+                script.onload = function () {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc =
+                        "{% static 'inventory/js/pdfjs/pdf.worker.min.js' %}";
+                    resolve();
+                };
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        // Render the invoice PDF fit-to-width so it fills the screen with
+        // correct proportions (the iOS iframe PDF viewer stretches instead).
         function openPdf(url) {
             const modalEl = document.getElementById("pdfModal");
-            const frame = document.getElementById("pdfFrame");
-            if (!modalEl || !frame || !window.bootstrap) return false;
+            const container = document.getElementById("pdfContainer");
+            if (!modalEl || !container || !window.bootstrap) return false;
 
-            frame.src = "";
+            container.innerHTML = '<div class="text-center text-muted p-4">Loading PDF...</div>';
             bootstrap.Modal.getOrCreateInstance(modalEl).show();
 
-            fetch(url)
+            loadPdfJs()
+                .then(function () {
+                    return fetch(url);
+                })
                 .then(function (response) {
                     if (!response.ok) throw new Error("PDF fetch failed");
-                    return response.blob();
+                    return response.arrayBuffer();
                 })
-                .then(function (blob) {
-                    if (frame._blobUrl) URL.revokeObjectURL(frame._blobUrl);
-                    frame._blobUrl = URL.createObjectURL(blob);
-                    frame.src = frame._blobUrl;
+                .then(function (data) {
+                    return pdfjsLib.getDocument({ data: data }).promise;
+                })
+                .then(function (doc) {
+                    container.innerHTML = "";
+                    const width = Math.max(container.clientWidth - 16, 200);
+                    const tasks = [];
+                    for (let i = 1; i <= doc.numPages; i++) {
+                        tasks.push(doc.getPage(i).then(function (page) {
+                            const viewport = page.getViewport({ scale: 1 });
+                            const scale = width / viewport.width;
+                            const scaled = page.getViewport({ scale: scale });
+                            const canvas = document.createElement("canvas");
+                            canvas.width = scaled.width;
+                            canvas.height = scaled.height;
+                            canvas.style.width = "100%";
+                            canvas.style.height = "auto";
+                            canvas.className = "d-block mx-auto mb-3";
+                            canvas.style.maxWidth = scaled.width + "px";
+                            container.appendChild(canvas);
+                            return page.render({
+                                canvasContext: canvas.getContext("2d"),
+                                viewport: scaled
+                            }).promise;
+                        }));
+                    }
+                    return Promise.all(tasks);
                 })
                 .catch(function (error) {
                     console.error("PDF load error:", error);
-                    frame.src = url;
+                    container.innerHTML =
+                        '<div class="alert alert-danger m-3">Could not load the PDF.</div>';
                 });
 
             return false;
         }
         document.addEventListener("hidden.bs.modal", function (e) {
             if (e.target && e.target.id === "pdfModal") {
-                const frame = document.getElementById("pdfFrame");
-                if (frame._blobUrl) {
-                    URL.revokeObjectURL(frame._blobUrl);
-                    frame._blobUrl = null;
-                }
-                frame.src = "";
+                document.getElementById("pdfContainer").innerHTML = "";
             }
         });
     </script>

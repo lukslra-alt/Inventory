@@ -1,4 +1,4 @@
-const CACHE_NAME = "inventorypro-v19"; // Bumped version structure layer
+const CACHE_NAME = "inventorypro-v20"; // Bumped version structure layer
 const FILES_TO_CACHE = [
     "/",
     "/static/inventory/css/bootstrap.min.css",
@@ -10,7 +10,9 @@ const FILES_TO_CACHE = [
     "/static/inventory/network.js",
     "/static/inventory/js/bootstrap.bundle.min.js",
     "/static/inventory/js/dashboard.js",
-    "/static/inventory/js/search.js"
+    "/static/inventory/js/search.js",
+    "/static/inventory/js/pdfjs/pdf.min.js",
+    "/static/inventory/js/pdfjs/pdf.worker.min.js"
 ];
 
 self.addEventListener("install", event => {
