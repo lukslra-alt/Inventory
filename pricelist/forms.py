@@ -1,7 +1,7 @@
 from django import forms
 from django.utils.text import slugify
 
-from .models import PricePage
+from .models import PricePage, PriceListHeading
 
 
 class PricePageForm(forms.ModelForm):
@@ -51,4 +51,31 @@ class PricePageForm(forms.ModelForm):
         # slug is auto-generated from name; display_order has a model
         # default. Allow leaving both blank.
         self.fields["slug"].required = False
+        self.fields["display_order"].required = False
+
+
+class PriceListHeadingForm(forms.ModelForm):
+    class Meta:
+        model = PriceListHeading
+        fields = [
+            "text",
+            "display_order",
+        ]
+        widgets = {
+            "text": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "e.g. Spare Parts",
+                }
+            ),
+            "display_order": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "min": "0",
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.fields["display_order"].required = False

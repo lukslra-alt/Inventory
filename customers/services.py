@@ -15,7 +15,7 @@ def _to_decimal(value):
         return Decimal("0.00")
     try:
         return Decimal(cleaned)
-    except InvalidOperation:
+    except (InvalidOperation, ValueError):
         return Decimal("0.00")
 
 
@@ -45,7 +45,7 @@ def import_customer_csv(filepath):
 
     Expected row shapes:
         <Customer Name>,,,,,,,,                -> starts a customer block
-        ,Invoice,<date>,<num>,<item>,<qty>,<price>,<amount>,<balance>
+        ,Invoice,<date>,<num>,<item>,<balance>,<qty>,<price>,<amount>,
         Total <Customer Name>,,...,<qty>,,<total>,<total>
     """
     result = {
@@ -70,7 +70,6 @@ def import_customer_csv(filepath):
                 defaults={
                     "customer": data["customer"],
                     "date": data["date"],
-                    "balance": data["balance"],
                 },
             )
             if created:
@@ -78,21 +77,36 @@ def import_customer_csv(filepath):
             else:
                 invoice.items.all().delete()
 
-            total = Decimal("0.00")
+            invoice_total = Decimal("0.00")
+            invoice_balance = Decimal("0.00")
             for row in data["rows"]:
-                amount = _to_decimal(_cell(row, 7))
+                # CSV layout:
+                # 4 = Item, 5 = Open Balance, 6 = Qty, 7 = Sales Price, 8 = Amount
+                open_balance = _to_decimal(_cell(row, 5))
+                qty = _to_decimal(_cell(row, 6))
+                sales_price = _to_decimal(_cell(row, 7))
+                amount = _to_decimal(_cell(row, 8))
+
                 InvoiceItem.objects.create(
                     invoice=invoice,
                     item=_cell(row, 4).strip(),
-                    qty=_to_decimal(_cell(row, 5)),
-                    sales_price=_to_decimal(_cell(row, 6)),
+                    qty=qty,
+                    sales_price=sales_price,
                     amount=amount,
                 )
-                result["items"] += 1
-                total += amount
 
-            invoice.total = total
+                # Accumulate invoice item amounts.
+                invoice_total += amount
+
+                # Accumulate open balances for this invoice.
+                invoice_balance += open_balance
+
+                result["items"] += 1
+
+            invoice.total = invoice_total
+            invoice.balance = invoice_balance
             invoice.save()
+
         pending_invoices = {}
 
     for row in rows:
@@ -101,9 +115,12 @@ def import_customer_csv(filepath):
 
         first = (row[0] or "").strip()
 
+        # ---------------------------------------------------------
+        # Invoice row
+        # ---------------------------------------------------------
         if not first:
             # Blank line or header — check for an invoice line.
-            if len(row) > 1 and row[1] and row[1].strip() == "Invoice":
+            if (len(row) > 1 and row[1] and row[1].strip() == "Invoice"):
                 if current_customer is None:
                     continue
                 invoice_number = _cell(row, 3).strip()
@@ -114,31 +131,40 @@ def import_customer_csv(filepath):
                     data = {
                         "customer": current_customer,
                         "date": _parse_date(_cell(row, 2)),
-                        "balance": Decimal("0.00"),
                         "rows": [],
                     }
                     pending_invoices[invoice_number] = data
-                # Balance is a running customer balance; keep the latest row.
-                data["balance"] = _to_decimal(_cell(row, 8))
+
+                # Add this item row to the invoice.
                 data["rows"].append(row)
             continue
 
+        # ---------------------------------------------------------
+        # Skip CSV headings
+        # ---------------------------------------------------------
         if first == "TOTAL":
-            continue
-
-        if first.startswith("Total"):
-            # Update running totals on the customer.
-            if current_customer is not None:
-                current_customer.total_qty = _to_decimal(_cell(row, 5))
-                current_customer.total_amount = _to_decimal(_cell(row, 7))
-                current_customer.balance = _to_decimal(_cell(row, 8))
-                current_customer.save()
             continue
 
         if first.lower() == "type":
             continue
 
-        # A customer block header row — flush prior invoice lines first.
+        # ---------------------------------------------------------
+        # Customer total row
+        # ---------------------------------------------------------
+        if first.startswith("Total"):
+            # Update running totals on the customer.
+            if current_customer is not None:
+                current_customer.balance = _to_decimal(_cell(row, 5))
+                current_customer.total_qty = _to_decimal(_cell(row, 6))
+                current_customer.total_amount = _to_decimal(_cell(row, 8))
+                current_customer.save()
+            continue
+
+        # ---------------------------------------------------------
+        # New customer block
+        # ---------------------------------------------------------
+
+        # Save all invoices belonging to the previous customer.
         flush()
 
         current_customer, created = Customer.objects.get_or_create(

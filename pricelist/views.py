@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
-from .models import PricePage, PriceListItem
-from .forms import PricePageForm
+from .models import PricePage, PriceListItem, PriceListHeading
+from .forms import PricePageForm, PriceListHeadingForm
 from inventory.models import Product
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
@@ -27,16 +27,67 @@ def price_categories(request):
 def price_page(request, slug):
     page = get_object_or_404(
         PricePage.objects.prefetch_related(
-            'items__product'
+            'items__product',
+            'headings'
         ),
         slug=slug
     )
+
+    entries = []
+
+    for item in page.items.all():
+        entries.append(
+            (item.display_order, "product", item)
+        )
+
+    for heading in page.headings.all():
+        entries.append(
+            (heading.display_order, "heading", heading)
+        )
+
+    entries.sort(key=lambda e: e[0])
 
     return render(
         request,
         'pricelist/price_page.html',
         {
-            'page': page
+            'page': page,
+            'entries': entries
+        }
+    )
+
+
+@staff_member_required
+def add_heading(request, page_id):
+    page = get_object_or_404(
+        PricePage,
+        id=page_id
+    )
+
+    if request.method == "POST":
+        form = PriceListHeadingForm(request.POST)
+
+        if form.is_valid():
+            heading = form.save(commit=False)
+            heading.page = page
+            heading.save()
+
+            messages.success(
+                request,
+                f'Heading "{heading.text}" added to {page.name}.'
+            )
+
+            return redirect('price_manage')
+
+    else:
+        form = PriceListHeadingForm()
+
+    return render(
+        request,
+        'pricelist/add_heading.html',
+        {
+            'form': form,
+            'page': page,
         }
     )
 

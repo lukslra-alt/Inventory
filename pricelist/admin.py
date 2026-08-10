@@ -1,8 +1,16 @@
 from django.contrib import admin
-from .models import PricePage, PriceListItem
+from .models import PricePage, PriceListItem, PriceListHeading
 from adminsortable2.admin import SortableAdminMixin, SortableInlineAdminMixin
 from django.urls import reverse
 from django.utils.html import format_html
+
+
+class PriceListHeadingInline(
+    SortableInlineAdminMixin,
+    admin.TabularInline
+):
+    model = PriceListHeading
+    extra = 0
 
 
 class PriceListItemInline(
@@ -23,6 +31,7 @@ class PricePageAdmin(SortableAdminMixin, admin.ModelAdmin):
 
     inlines = [
         PriceListItemInline,
+        PriceListHeadingInline,
     ]
 
     def add_products_button(self, obj):

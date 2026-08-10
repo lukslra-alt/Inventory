@@ -33,6 +33,12 @@ urlpatterns = [
         name='add_products'
     ),
 
+    path(
+        'add-heading/<int:page_id>/',
+        views.add_heading,
+        name='add_heading'
+    ),
+
 
 
 ]

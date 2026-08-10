@@ -39,6 +39,13 @@ td {
     font-size: 17px;
 }
 
+.heading-row td {
+    background: #f2f2f2;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
 .price {
     text-align: right;
     font-weight: bold;
@@ -99,18 +106,26 @@ td {
             <th width="30%">Selling Price</th>
         </tr>
 
-        {% for item in page.items.all %}
+        {% for entry in entries %}
 
-        {% if item.visible %}
+        {% if entry.1 == "heading" %}
+
+        <tr class="heading-row">
+            <td colspan="2">
+                {{ entry.2.text }}
+            </td>
+        </tr>
+
+        {% elif entry.2.visible %}
 
         <tr>
 
             <td>
-                {{ item.product.product_name }}
+                {{ entry.2.product.product_name }}
             </td>
 
             <td class="price">
-                Rs. {{ item.product.sales_price }}
+                Rs. {{ entry.2.product.sales_price }}
             </td>
 
         </tr>

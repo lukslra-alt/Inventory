@@ -22,6 +22,28 @@ class PricePage(models.Model):
         return self.name
 
 
+class PriceListHeading(models.Model):
+    page = models.ForeignKey(
+        PricePage,
+        on_delete=models.CASCADE,
+        related_name="headings"
+    )
+
+    text = models.CharField(
+        max_length=200
+    )
+
+    display_order = models.PositiveIntegerField(
+        default=0
+    )
+
+    class Meta:
+        ordering = ["display_order"]
+
+    def __str__(self):
+        return self.text
+
+
 class PriceListItem(models.Model):
     page = models.ForeignKey(
         PricePage,

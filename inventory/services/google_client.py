@@ -6,8 +6,8 @@ from datetime import datetime
 from django.conf import settings
 
 
-SPREADSHEET_ID = "1ExDKhDUEmDbLYSzGoK07lsDbQgHh5j92"
-GID = "1700479155"
+SPREADSHEET_ID = "1TStaQCdezgO_zJAnjC_9yre07nDYID3v"
+GID = "855109319"
 
 CUSTOMER_FILE_ID = "1h5FRhHggQuR4yGCSAN8C175YXhJ71_cR"
 
