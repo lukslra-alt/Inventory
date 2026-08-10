@@ -6,6 +6,8 @@ Invoice {{ invoice.invoice_number }} - InventoryPro
 
 {% block content %}
 
+{% load humanize %}
+
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item">
@@ -92,15 +94,15 @@ Invoice {{ invoice.invoice_number }} - InventoryPro
             </td>
 
             <td class="text-end">
-                {{ item.qty }}
+                {{ item.qty|intcomma }}
             </td>
 
             <td class="text-end">
-                {{ item.sales_price|floatformat:2 }}
+                {{ item.sales_price|floatformat:2|intcomma }}
             </td>
 
             <td class="text-end">
-                {{ item.amount|floatformat:2 }}
+                {{ item.amount|floatformat:2|intcomma }}
             </td>
         </tr>
 
@@ -122,7 +124,7 @@ Invoice {{ invoice.invoice_number }} - InventoryPro
             </th>
 
             <th class="text-end">
-                {{ invoice.total_qty|floatformat:2 }}
+                {{ invoice.total_qty|floatformat:2|intcomma }}
             </th>
         </tr>
 
@@ -134,7 +136,7 @@ Invoice {{ invoice.invoice_number }} - InventoryPro
             </th>
 
             <th class="text-end">
-                {{ invoice.total_amount|floatformat:2 }}
+                {{ invoice.total_amount|floatformat:2|intcomma }}
             </th>
         </tr>
 
@@ -146,7 +148,7 @@ Invoice {{ invoice.invoice_number }} - InventoryPro
             </th>
 
             <th class="text-end">
-                {{ invoice.balance|floatformat:2 }}
+                {{ invoice.balance|floatformat:2|intcomma }}
             </th>
         </tr>
     </tfoot>

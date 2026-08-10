@@ -27,8 +27,10 @@ def _logo_path():
     if configured:
         candidates.append(Path(configured))
     candidates.append(Path(settings.MEDIA_ROOT) / "logo.png")
+    candidates.append(Path(settings.MEDIA_ROOT) / "logo.jpg")
     candidates.append(Path(settings.BASE_DIR) / "static" / "logo.png")
-    candidates.append(Path(r"E:\logo.png"))
+    candidates.append(Path(settings.BASE_DIR) / "static" / "logo.jpg")
+    candidates.append(Path(settings.BASE_DIR) / "static" / "logo.jpeg")
 
     for candidate in candidates:
         if candidate.exists():
@@ -225,8 +227,8 @@ def invoice_pdf(invoice_number):
     if logo_path:
         logo = Image(
             logo_path,
-            width=75 * mm,
-            height=75 * mm * (223.0 / 631.0),
+            width=page_width,
+            height=page_width * (325.0 / 1152.0),
         )
 
     logo_cell = []
@@ -235,10 +237,6 @@ def invoice_pdf(invoice_number):
         logo_cell.append(Spacer(1, 4 * mm))
 
     logo_cell.extend([
-        Paragraph("Invoice", styles["InvoiceTitle"]),
-
-        Spacer(1, 4 * mm),
-
         Paragraph(
             f"<b>Date :</b> {date_text}",
             styles["NormalText"],

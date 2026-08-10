@@ -4,6 +4,8 @@
 
 {% block content %}
 
+{% load humanize %}
+
 <h1>Customers</h1>
 
 <table class="table table-striped table-hover">
@@ -23,9 +25,9 @@
                     {{ customer.name }}
                 </a>
             </td>
-            <td class="text-end">{{ customer.total_qty }}</td>
-            <td class="text-end">{{ customer.total_amount }}</td>
-            <td class="text-end">{{ customer.balance }}</td>
+            <td class="text-end">{{ customer.total_qty|intcomma }}</td>
+            <td class="text-end">{{ customer.total_amount|intcomma }}</td>
+            <td class="text-end">{{ customer.balance|intcomma }}</td>
         </tr>
         {% empty %}
         <tr>

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 {% load static %}
+{% load humanize %}
 
 <!-- Custom Local View Styles -->
 <style>
@@ -27,7 +28,7 @@
     @media (max-width: 767.98px) {
         #productList table.table th,
         #productList table.table td {
-            font-size: 0.8rem;
+            font-size: 0.68rem;
             padding: 0.35rem 0.4rem;
         }
         #productList table.table th:first-child,
@@ -36,6 +37,23 @@
             white-space: normal;
             overflow: visible;
             text-overflow: clip;
+        }
+        #productList table.table th.col-qty,
+        #productList table.table td.col-qty {
+            width: 55px;
+        }
+        #productList table.table th.col-status,
+        #productList table.table td.col-status {
+            width: 60px;
+        }
+        #productList table.table th.col-price,
+        #productList table.table td.col-price,
+        #productList table.table th.col-cost,
+        #productList table.table td.col-cost {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            min-width: 80px;
         }
         #productList table.table { min-width: 640px; }
         #productList .table-responsive {
@@ -81,9 +99,9 @@
                             <tr>
                                 <th>Product</th>
                                 <th class="col-qty">Qty</th>
-                                <th>Price</th>
+                                <th class="col-price">Price</th>
                                 {% if show_cost %}
-                                <th>Cost</th>
+                                <th class="col-cost">Cost</th>
                                 {% endif %}
                                 {% if is_admin %}
                                 <th class="col-status">Status</th>
@@ -95,10 +113,10 @@
                             {% for product in page_obj %}
                             <tr>
                                 <td title="{{ product.product_name }}">{{ product.product_name }}</td>
-                                <td class="col-qty">{{ product.qty }}</td>
-                                <td>{{ product.sales_price }}</td>
+                                <td class="col-qty">{{ product.qty|intcomma }}</td>
+                                <td class="col-price">{{ product.sales_price|intcomma }}</td>
                                 {% if show_cost %}
-                                <td>{{ product.cost }}</td>
+                                <td class="col-cost">{{ product.cost|intcomma }}</td>
                                 {% endif %}
                                 {% if is_admin %}
                                 <td class="col-status"><span class="badge bg-secondary">{{ product.status }}</span></td>

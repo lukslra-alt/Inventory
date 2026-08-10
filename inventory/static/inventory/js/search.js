@@ -1,4 +1,18 @@
 // Safeguard lifecycle orchestration layout
+function formatNumber(value, decimals) {
+    if (value === null || value === undefined || value === "") {
+        return (decimals === undefined) ? "0" : "0.00";
+    }
+    const num = Number(value);
+    if (isNaN(num)) {
+        return String(value);
+    }
+    if (decimals === undefined) {
+        return num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+    return num.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     const searchBox = document.getElementById("searchBox");
     const productList = document.getElementById("productList");
@@ -42,8 +56,8 @@ document.addEventListener("DOMContentLoaded", function () {
                                         <tr>
                                             <th>Product</th>
                                             <th>Qty</th>
-                                            <th>Price</th>
-                                            ${showCost ? "<th>Cost</th>" : ""}
+                                            <th class="col-price">Price</th>
+                                            ${showCost ? "<th class=\"col-cost\">Cost</th>" : ""}
                                             ${isAdmin ? "<th>Status</th><th>Action</th>" : ""}
                                         </tr>
                                     </thead>
@@ -54,9 +68,9 @@ document.addEventListener("DOMContentLoaded", function () {
                             html += `
                                 <tr>
                                     <td>${product.name || product.product_name}</td>
-                                    <td>${product.qty}</td>
-                                    <td>${product.price || product.sales_price}</td>
-                                    ${showCost ? `<td>${product.cost || '0.00'}</td>` : ""}
+                                    <td>${formatNumber(product.qty)}</td>
+                                    <td class="col-price">${formatNumber(product.price || product.sales_price, 2)}</td>
+                                    ${showCost ? `<td class="col-cost">${formatNumber(product.cost || '0.00', 2)}</td>` : ""}
                                     ${isAdmin ? `
                                         <td><span class="badge bg-secondary">${product.status}</span></td>
                                         <td>

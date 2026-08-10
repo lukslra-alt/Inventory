@@ -4,6 +4,8 @@
 
 {% block content %}
 
+{% load humanize %}
+
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item">
@@ -18,15 +20,15 @@
 <table class="table table-sm table-bordered w-auto">
     <tr>
         <th>Total Qty</th>
-        <td>{{ customer.total_qty }}</td>
+        <td>{{ customer.total_qty|intcomma }}</td>
     </tr>
     <tr>
         <th>Total Amount</th>
-        <td>{{ customer.total_amount }}</td>
+        <td>{{ customer.total_amount|intcomma }}</td>
     </tr>
     <tr>
         <th>Balance</th>
-        <td>{{ customer.balance }}</td>
+        <td>{{ customer.balance|intcomma }}</td>
     </tr>
 </table>
 
@@ -53,11 +55,13 @@
             </td>
             <td>{{ invoice.date|default:"-" }}</td>
             <td class="text-end">{{ invoice.items.count }}</td>
-            <td class="text-end">{{ invoice.total }}</td>
-            <td class="text-end">{{ invoice.balance }}</td>
+            <td class="text-end">{{ invoice.total|intcomma }}</td>
+            <td class="text-end">{{ invoice.balance|intcomma }}</td>
             <td class="text-end">
                 <a class="btn btn-sm btn-outline-secondary"
-                   href="{% url 'invoice_pdf' invoice.invoice_number %}">
+                   href="{% url 'invoice_pdf' invoice.invoice_number %}"
+                   target="_blank"
+                   rel="noopener">
                     PDF
                 </a>
             </td>

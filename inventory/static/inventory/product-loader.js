@@ -26,6 +26,20 @@ function filterProducts(products) {
     });
 }
 
+function formatNumber(value, decimals) {
+    if (value === null || value === undefined || value === "") {
+        return (decimals === undefined) ? "0" : "0.00";
+    }
+    const num = Number(value);
+    if (isNaN(num)) {
+        return String(value);
+    }
+    if (decimals === undefined) {
+        return num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+    return num.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
 function displayProducts(products) {
     const productList = document.getElementById("productList");
 
@@ -54,8 +68,8 @@ function displayProducts(products) {
                     <tr>
                         <th>Product</th>
                         <th class="col-qty">Qty</th>
-                        <th>Price</th>
-                        ${showCost ? "<th>Cost</th>" : ""}
+                        <th class="col-price">Price</th>
+                        ${showCost ? "<th class=\"col-cost\">Cost</th>" : ""}
                         ${isAdmin ? "<th class=\"col-status\">Status</th><th class=\"col-action\">Action</th>" : ""}
                     </tr>
                 </thead>
@@ -67,9 +81,9 @@ function displayProducts(products) {
         html += `
             <tr>
                 <td title="${name}">${name}</td>
-                <td class="col-qty">${product.qty}</td>
-                <td>${product.sales_price || product.price || "0.00"}</td>
-                ${showCost ? `<td>${product.cost || "0.00"}</td>` : ""}
+                <td class="col-qty">${formatNumber(product.qty)}</td>
+                <td class="col-price">${formatNumber(product.sales_price || product.price || "0.00", 2)}</td>
+                ${showCost ? `<td class="col-cost">${formatNumber(product.cost || "0.00", 2)}</td>` : ""}
                 ${isAdmin ? `
                     <td class="col-status"><span class="badge bg-secondary">${product.status || "OK"}</span></td>
                     <td class="col-action">
