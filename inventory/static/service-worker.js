@@ -1,7 +1,10 @@
-const CACHE_NAME = "inventorypro-v16"; // Bumped version structure layer
+const CACHE_NAME = "inventorypro-v17"; // Bumped version structure layer
 const FILES_TO_CACHE = [
     "/",
     "/static/inventory/css/bootstrap.min.css",
+    "/static/inventory/css/bootstrap-icons.min.css",
+    "/static/inventory/css/fonts/bootstrap-icons.woff",
+    "/static/inventory/css/fonts/bootstrap-icons.woff2",
     "/static/inventory/offline-db.js",
     "/static/inventory/product-loader.js",
     "/static/inventory/network.js",
