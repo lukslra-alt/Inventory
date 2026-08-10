@@ -266,7 +266,9 @@ Edit {{ page.name }} - InventoryPro
     }
 
     function post(url, data) {
-        const body = new URLSearchParams(data);
+        const body = data instanceof URLSearchParams
+            ? data
+            : new URLSearchParams(data);
         return fetch(url, {
             method: "POST",
             headers: {
@@ -363,16 +365,18 @@ Edit {{ page.name }} - InventoryPro
 
     if (saveBtn && tbody) {
         saveBtn.addEventListener("click", function () {
-            const order = [];
+            // Append each entry as its own "order" parameter so the server
+            // receives them as a list, not a single comma-joined string.
+            const params = new URLSearchParams();
             tbody.querySelectorAll("tr.sortable-row").forEach(function (row) {
-                order.push(row.dataset.type + ":" + row.dataset.id);
+                params.append("order", row.dataset.type + ":" + row.dataset.id);
             });
 
             const btn = saveBtn;
             btn.disabled = true;
             btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Saving...';
 
-            post("{% url 'reorder_page' page.id %}", { order: order })
+            post("{% url 'reorder_page' page.id %}", params)
                 .then(function (r) { return r.json(); })
                 .then(function () {
                     btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Saved';
