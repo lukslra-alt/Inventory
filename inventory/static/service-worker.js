@@ -1,4 +1,4 @@
-const CACHE_NAME = "inventorypro-v20"; // Bumped version structure layer
+const CACHE_NAME = "inventorypro-v21"; // Bumped version structure layer
 const FILES_TO_CACHE = [
     "/",
     "/static/inventory/css/bootstrap.min.css",

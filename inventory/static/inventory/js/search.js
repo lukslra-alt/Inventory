@@ -96,15 +96,29 @@ function filterOfflineProducts(products, query, urlParams) {
 }
 
 function searchOffline(query, urlParams) {
-    if (!db) {
-        return;
-    }
-    const transaction = db.transaction("products", "readonly");
-    const store = transaction.objectStore("products");
-    store.getAll().onsuccess = function (event) {
-        const products = filterOfflineProducts(event.target.result || [], query, urlParams);
-        renderSearchResults(products);
-    };
+    // The service worker caches /offline-products/ (the full product list)
+    // whenever the dashboard loads online, so this fetch works while offline.
+    // Prefer it over IndexedDB since it does not depend on sync timing.
+    fetch("/offline-products/")
+        .then(function (response) {
+            if (!response.ok) throw new Error("offline products fetch failed");
+            return response.json();
+        })
+        .then(function (products) {
+            renderSearchResults(filterOfflineProducts(products || [], query, urlParams));
+        })
+        .catch(function () {
+            // Fall back to the locally synced IndexedDB store
+            if (!db) {
+                return;
+            }
+            const transaction = db.transaction("products", "readonly");
+            const store = transaction.objectStore("products");
+            store.getAll().onsuccess = function (event) {
+                const products = filterOfflineProducts(event.target.result || [], query, urlParams);
+                renderSearchResults(products);
+            };
+        });
 }
 
 document.addEventListener("DOMContentLoaded", function () {
