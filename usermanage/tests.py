@@ -1,6 +1,195 @@
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AnonymousUser, User
 from django.test import TestCase
 from django.urls import reverse
+
+from usermanage.models import UserProfile
+from usermanage.roles import (
+    can_access_pricelist,
+    is_admin,
+    is_staff,
+    role_of,
+    role_to_flags,
+)
+from usermanage.forms import UserCreateForm, UserEditForm
+
+
+class UserProfileModelTests(TestCase):
+
+    def test_profile_auto_created_on_user_create(self):
+        user = User.objects.create_user(username="user", password="pass")
+        profile = UserProfile.objects.filter(user=user).first()
+        self.assertIsNotNone(profile)
+        self.assertFalse(profile.can_access_pricelist)
+
+    def test_profile_not_duplicated_on_resave(self):
+        user = User.objects.create_user(username="user", password="pass")
+        user.first_name = "Renamed"
+        user.save()
+        self.assertEqual(UserProfile.objects.filter(user=user).count(), 1)
+
+    def test_str(self):
+        user = User.objects.create_user(username="alice", password="pass")
+        self.assertEqual(
+            str(user.userprofile), "alice profile"
+        )
+
+    def test_can_toggle_pricelist_access(self):
+        user = User.objects.create_user(username="user", password="pass")
+        user.userprofile.can_access_pricelist = True
+        user.userprofile.save()
+        user.userprofile.refresh_from_db()
+        self.assertTrue(user.userprofile.can_access_pricelist)
+
+
+class RolesTests(TestCase):
+
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            username="admin", password="pass", is_staff=True, is_superuser=True
+        )
+        self.staff = User.objects.create_user(
+            username="staff", password="pass", is_staff=True
+        )
+        self.customer = User.objects.create_user(
+            username="customer", password="pass"
+        )
+
+    def test_is_admin(self):
+        self.assertTrue(is_admin(self.admin))
+        self.assertFalse(is_admin(self.staff))
+        self.assertFalse(is_admin(self.customer))
+
+    def test_is_staff(self):
+        self.assertTrue(is_staff(self.staff))
+        self.assertTrue(is_staff(self.admin))
+        self.assertFalse(is_staff(self.customer))
+
+    def test_role_of(self):
+        self.assertEqual(role_of(self.admin), "admin")
+        self.assertEqual(role_of(self.staff), "staff")
+        self.assertEqual(role_of(self.customer), "customer")
+
+    def test_role_to_flags(self):
+        self.assertEqual(
+            role_to_flags("admin"), {"is_staff": True, "is_superuser": True}
+        )
+        self.assertEqual(
+            role_to_flags("staff"), {"is_staff": True, "is_superuser": False}
+        )
+        self.assertEqual(
+            role_to_flags("customer"), {"is_staff": False, "is_superuser": False}
+        )
+
+    def test_staff_and_admin_always_have_pricelist_access(self):
+        self.assertTrue(can_access_pricelist(self.admin))
+        self.assertTrue(can_access_pricelist(self.staff))
+
+    def test_customer_without_profile_has_no_access(self):
+        self.assertFalse(can_access_pricelist(self.customer))
+
+    def test_customer_with_access_flag_can_view(self):
+        self.customer.userprofile.can_access_pricelist = True
+        self.customer.userprofile.save()
+        self.assertTrue(can_access_pricelist(self.customer))
+
+    def test_anonymous_user_has_no_access(self):
+        self.assertFalse(can_access_pricelist(AnonymousUser()))
+
+
+class RoleFormsTests(TestCase):
+
+    def test_create_form_sets_admin_flags(self):
+        form = UserCreateForm(
+            data={
+                "username": "boss",
+                "password": "StrongPass123!",
+                "role": "admin",
+            }
+        )
+        self.assertTrue(form.is_valid())
+        user = form.save()
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.is_superuser)
+        self.assertTrue(user.is_active)
+
+    def test_create_form_sets_staff_flags(self):
+        form = UserCreateForm(
+            data={
+                "username": "worker",
+                "password": "StrongPass123!",
+                "role": "staff",
+            }
+        )
+        self.assertTrue(form.is_valid())
+        user = form.save()
+        self.assertTrue(user.is_staff)
+        self.assertFalse(user.is_superuser)
+
+    def test_create_form_sets_customer_flags(self):
+        form = UserCreateForm(
+            data={
+                "username": "buyer",
+                "password": "StrongPass123!",
+                "role": "customer",
+            }
+        )
+        self.assertTrue(form.is_valid())
+        user = form.save()
+        self.assertFalse(user.is_staff)
+        self.assertFalse(user.is_superuser)
+
+    def test_create_form_rejects_weak_password(self):
+        form = UserCreateForm(
+            data={
+                "username": "buyer",
+                "password": "pass",
+                "role": "customer",
+            }
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("password", form.errors)
+
+    def test_create_form_saves_pricelist_access(self):
+        form = UserCreateForm(
+            data={
+                "username": "buyer",
+                "password": "StrongPass123!",
+                "role": "customer",
+                "pricelist_access": "on",
+            }
+        )
+        self.assertTrue(form.is_valid())
+        user = form.save()
+        user.userprofile.refresh_from_db()
+        self.assertTrue(user.userprofile.can_access_pricelist)
+
+    def test_edit_form_initial_role_reflects_current_flags(self):
+        staff = User.objects.create_user(
+            username="worker", password="pass", is_staff=True
+        )
+        form = UserEditForm(instance=staff)
+        self.assertEqual(form.fields["role"].initial, "staff")
+
+    def test_edit_form_changes_role_to_customer(self):
+        staff = User.objects.create_user(
+            username="worker", password="pass", is_staff=True
+        )
+        form = UserEditForm(
+            instance=staff,
+            data={
+                "username": "worker",
+                "first_name": "",
+                "last_name": "",
+                "email": "",
+                "role": "customer",
+                "is_active": "on",
+            },
+        )
+        self.assertTrue(form.is_valid())
+        form.save()
+        staff.refresh_from_db()
+        self.assertFalse(staff.is_staff)
+        self.assertFalse(staff.is_superuser)
 
 
 class UserManageViewTests(TestCase):

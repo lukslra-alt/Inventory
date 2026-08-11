@@ -13,9 +13,3 @@ staticfiles/
 # Local SQLite databases
 *.sqlite3
 *.sqlite
-
-# Test files — kept on develop, stripped from the production branch
-**/tests.py
-**/tests/
-**/test_*.py
-**/*_test.py

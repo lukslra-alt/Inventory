@@ -13,6 +13,7 @@ from customers.models import (
     extract_description,
 )
 from customers.services import import_customer_csv
+from customers.pdf import _logo_path, _money, _quantity, invoice_pdf
 
 
 def write_csv(rows, filepath):
@@ -41,13 +42,13 @@ class ImportCustomerCsvTests(TestCase):
 
     def test_imports_customers_invoices_and_items(self):
         rows = [
-            ["", "Type", "Date", "Num", "Item", "Qty", "Sales Price", "Amount", "Balance"],
+            ["", "Type", "Date", "Num", "Item", "Open Balance", "Qty", "Sales Price", "Amount"],
             ["Aaliya Rice Mill - Galewela", "", "", "", "", "", "", "", ""],
-            ["", "Invoice", "7/7/2026", "E12487", "POLISHER:PARTS", 3, 2600, 7800, 7800],
-            ["", "Invoice", "7/10/2026", "E12504", "V BELT:B:B 106", 10, 2120, 21200, 29000],
-            ["", "Invoice", "7/10/2026", "E12504", "V BELT:B:B 67", 3, 1340, 4020, 33020],
-            ["Total Aaliya Rice Mill - Galewela", "", "", "", "", 16, "", 33020, 33020],
-            ["TOTAL", "", "", "", "", 16, "", 33020, 33020],
+            ["", "Invoice", "7/7/2026", "E12487", "POLISHER:PARTS", 7800, 3, 2600, 7800],
+            ["", "Invoice", "7/10/2026", "E12504", "V BELT:B:B 106", 29000, 10, 2120, 21200],
+            ["", "Invoice", "7/10/2026", "E12504", "V BELT:B:B 67", 4020, 3, 1340, 4020],
+            ["Total Aaliya Rice Mill - Galewela", "", "", "", "", 33020, 16, "", 33020],
+            ["TOTAL", "", "", "", "", 33020, 16, "", 33020],
         ]
         result = import_customer_csv(self.make_csv(rows))
 
@@ -68,8 +69,8 @@ class ImportCustomerCsvTests(TestCase):
     def test_reimport_is_idempotent(self):
         rows = [
             ["Acme", "", "", "", "", "", "", "", ""],
-            ["", "Invoice", "1/1/2026", "I001", "ITEM A", 2, 100, 200, 200],
-            ["Total Acme", "", "", "", "", 2, "", 200, 200],
+            ["", "Invoice", "1/1/2026", "I001", "ITEM A", 200, 2, 100, 200],
+            ["Total Acme", "", "", "", "", 200, 2, "", 200],
         ]
         filepath = self.make_csv(rows)
 
@@ -120,6 +121,51 @@ class ExtractDescriptionTests(TestCase):
             ),
             "10' RUBBER ROLLE...",
         )
+
+
+class PdfHelperTests(TestCase):
+
+    def test_money_formats_with_commas_and_two_decimals(self):
+        self.assertEqual(_money(12345.6), "12,345.60")
+        self.assertEqual(_money(0), "0.00")
+
+    def test_money_handles_none_and_bad_values(self):
+        self.assertEqual(_money(None), "0.00")
+        self.assertEqual(_money("not-a-number"), "0.00")
+
+    def test_quantity_drops_decimal_for_whole_numbers(self):
+        self.assertEqual(_quantity(10), "10")
+        self.assertEqual(_quantity(10.0), "10")
+
+    def test_quantity_keeps_decimals_for_fractions(self):
+        self.assertEqual(_quantity(10.5), "10.50")
+
+    def test_logo_path_returns_existing_file_or_none(self):
+        path = _logo_path()
+        if path is not None:
+            self.assertTrue(os.path.exists(path))
+
+    def test_invoice_pdf_builds_pdf_bytes(self):
+        from django.contrib.auth.models import User
+
+        user = User.objects.create_user(username="tester", password="pass")
+        customer = Customer.objects.create(name="Acme")
+        invoice = Invoice.objects.create(
+            invoice_number="PDF001",
+            customer=customer,
+            total=1000,
+            balance=1000,
+        )
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            item="ITEM A",
+            qty=2,
+            sales_price=500,
+            amount=1000,
+        )
+        pdf = invoice_pdf("PDF001")
+        self.assertTrue(pdf.startswith(b"%PDF"))
+        self.assertGreater(len(pdf), 100)
 
 
 class CustomerViewTests(TestCase):
