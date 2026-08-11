@@ -9,7 +9,7 @@
 <style>
 
 .price-container {
-    max-width: 900px;
+    max-width: 1100px;
     margin: 30px auto;
 }
 
@@ -20,41 +20,98 @@ h2 {
     font-size: 24px;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
+/* ---- Column selector toolbar ---- */
+.price-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.col-selector {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.col-selector .col-label {
+    font-size: 14px;
+    color: #6c757d;
+    margin-right: 6px;
+}
+
+.col-selector button {
+    min-width: 36px;
+    padding: 5px 10px;
+    border: 1px solid #ced4da;
+    background: #fff;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.col-selector button:hover {
+    background: #f1f3f5;
+}
+
+.col-selector button.active {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+}
+
+/* ---- Price list (newspaper/column flow) ---- */
+.price-list {
+    column-count: 1;
+    column-gap: 32px;
+    column-fill: balance;
     margin-top: 20px;
 }
 
-th {
-    background: #f2f2f2;
-    text-align: left;
-    padding: 12px;
-    border: 1px solid #ccc;
+.price-list.cols-2 {
+    column-count: 2;
 }
 
-td {
-    padding: 12px;
-    border: 1px solid #ccc;
-    font-size: 17px;
+.price-list.cols-3 {
+    column-count: 3;
 }
 
-.heading-row td {
+.grid-heading {
+    column-span: all;
     background: #f2f2f2;
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin: 14px 0 0 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
 }
 
-.price {
+.grid-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    padding: 6px 4px;
+    border-bottom: 1px solid #ddd;
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+.grid-item .item-name {
+    font-size: 17px;
+}
+
+.grid-item .price {
     text-align: right;
     font-weight: bold;
-}
-
-.print-btn {
-    margin-bottom: 20px;
-    padding: 8px 15px;
-    cursor: pointer;
+    font-size: 17px;
+    white-space: nowrap;
 }
 
 .footer {
@@ -63,10 +120,9 @@ td {
     margin-top: 40px;
 }
 
-
 @media print {
 
-    .print-btn,
+    .price-toolbar,
     nav,
     #network-status {
         display: none;
@@ -74,10 +130,7 @@ td {
 
     .price-container {
         margin: 0;
-    }
-
-    table {
-        page-break-inside: avoid;
+        max-width: 100%;
     }
 
     .footer {
@@ -93,53 +146,75 @@ td {
 
 <div class="price-container">
 
-    <button class="print-btn" onclick="window.print()">
-        Print
-    </button>
+    <div class="price-toolbar">
+        <div class="col-selector">
+            <span class="col-label">Columns:</span>
+            <button type="button" data-cols="1">1</button>
+            <button type="button" data-cols="2">2</button>
+            <button type="button" data-cols="3">3</button>
+        </div>
+        <button class="print-btn btn btn-outline-secondary" onclick="window.print()">
+            Print
+        </button>
+    </div>
 
     <h2>{{ page.name }}</h2>
 
-    <table>
-
-        <tr>
-            <th width="70%">Product</th>
-            <th width="30%">Selling Price</th>
-        </tr>
+    <div id="priceList" class="price-list">
 
         {% for entry in entries %}
 
         {% if entry.1 == "heading" %}
 
-        <tr class="heading-row">
-            <td colspan="2">
-                {{ entry.2.text }}
-            </td>
-        </tr>
+        <div class="grid-heading">
+            {{ entry.2.text }}
+        </div>
 
         {% elif entry.2.visible %}
 
-        <tr>
-
-            <td>
-                {{ entry.2.product.product_name }}
-            </td>
-
-            <td class="price">
-                Rs. {{ entry.2.product.sales_price }}
-            </td>
-
-        </tr>
+        <div class="grid-item">
+            <span class="item-name">{{ entry.2.product.product_name }}</span>
+            <span class="price">Rs. {{ entry.2.product.sales_price }}</span>
+        </div>
 
         {% endif %}
 
         {% endfor %}
 
-    </table>
+    </div>
 
     <div class="footer">
         Last Updated: {% now "d-m-Y" %}
     </div>
 
 </div>
+
+<script>
+(function () {
+    const list = document.getElementById("priceList");
+    if (!list) return;
+    const buttons = document.querySelectorAll(".col-selector button");
+
+    function setColumns(cols) {
+        const valid = cols === "1" || cols === "2" || cols === "3";
+        if (!valid) cols = "1";
+        list.className = "price-list cols-" + cols;
+        buttons.forEach(function (btn) {
+            btn.classList.toggle("active", btn.dataset.cols === cols);
+        });
+        try { localStorage.setItem("pricelist_cols", cols); } catch (e) {}
+    }
+
+    buttons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            setColumns(btn.dataset.cols);
+        });
+    });
+
+    var saved = null;
+    try { saved = localStorage.getItem("pricelist_cols"); } catch (e) {}
+    setColumns(saved || "1");
+})();
+</script>
 
 {% endblock %}
