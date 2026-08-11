@@ -46,6 +46,16 @@
     <link href="{% static 'inventory/css/bootstrap-icons.min.css' %}"
           rel="stylesheet">
 
+    <style>
+        @media print {
+            nav,
+            .navbar,
+            .print-btn,
+            #network-status {
+                display: none !important;
+            }
+        }
+    </style>
 
 </head>
 

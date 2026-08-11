@@ -40,6 +40,12 @@ urlpatterns = [
     ),
 
     path(
+        'pdf/<slug:slug>/',
+        views.price_page_pdf,
+        name='price_page_pdf'
+    ),
+
+    path(
         'edit/<int:page_id>/',
         views.edit_page,
         name='edit_page'

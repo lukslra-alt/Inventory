@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-{{ page.name }} - InventoryPro
+Waseer Trading Dambulla
 {% endblock %}
 
 {% block content %}
@@ -114,11 +114,31 @@ h2 {
     white-space: nowrap;
 }
 
-.footer {
-    text-align: center;
-    font-size: 12px;
-    margin-top: 40px;
-}
+    .footer {
+        text-align: center;
+        font-size: 12px;
+        margin-top: 40px;
+    }
+
+    .print-header {
+        display: none;
+        align-items: baseline;
+        justify-content: center;
+        position: relative;
+        font-size: 22px;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 4px;
+    }
+
+    .print-header .print-date {
+        position: absolute;
+        left: 0;
+        top: 0;
+        font-size: 13px;
+        font-weight: normal;
+        color: #000;
+    }
 
 @media print {
 
@@ -126,6 +146,10 @@ h2 {
     nav,
     #network-status {
         display: none;
+    }
+
+    .print-header {
+        display: flex;
     }
 
     .price-container {
@@ -146,6 +170,11 @@ h2 {
 
 <div class="price-container">
 
+    <div class="print-header">
+        <span class="print-date">{% now "d-m-Y" %}</span>
+        Waseer Trading Dambulla
+    </div>
+
     <div class="price-toolbar">
         <div class="col-selector">
             <span class="col-label">Columns:</span>
@@ -153,9 +182,13 @@ h2 {
             <button type="button" data-cols="2">2</button>
             <button type="button" data-cols="3">3</button>
         </div>
-        <button class="print-btn btn btn-outline-secondary" onclick="window.print()">
-            Print
-        </button>
+        <div class="d-flex gap-2">
+            <a id="pdfBtn" class="btn btn-outline-primary"
+               data-base="{% url 'price_page_pdf' page.slug %}"
+               href="{% url 'price_page_pdf' page.slug %}?cols=1">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF
+            </a>
+        </div>
     </div>
 
     <h2>{{ page.name }}</h2>
@@ -191,9 +224,20 @@ h2 {
 
 <script>
 (function () {
+    // Hide the document title from the browser's own print header so it does
+    // not duplicate the company name printed on the page.
+    var originalTitle = document.title;
+    window.addEventListener("beforeprint", function () {
+        document.title = " ";
+    });
+    window.addEventListener("afterprint", function () {
+        document.title = originalTitle;
+    });
+
     const list = document.getElementById("priceList");
     if (!list) return;
     const buttons = document.querySelectorAll(".col-selector button");
+    const pdfBtn = document.getElementById("pdfBtn");
 
     function setColumns(cols) {
         const valid = cols === "1" || cols === "2" || cols === "3";
@@ -202,6 +246,9 @@ h2 {
         buttons.forEach(function (btn) {
             btn.classList.toggle("active", btn.dataset.cols === cols);
         });
+        if (pdfBtn) {
+            pdfBtn.href = pdfBtn.dataset.base + "?cols=" + cols;
+        }
         try { localStorage.setItem("pricelist_cols", cols); } catch (e) {}
     }
 
