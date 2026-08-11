@@ -43,13 +43,15 @@
                 <th>Name</th>
                 <th>Email</th>
                 <th>Role</th>
+                <th>Pricelist</th>
                 <th>Active</th>
                 <th>Last Login</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
-            {% for user in page_obj %}
+            {% for row in page_obj %}
+            {% with user=row.user %}
             <tr>
                 <td>{{ user.username }}</td>
                 <td>{{ user.first_name }} {{ user.last_name }}</td>
@@ -60,7 +62,14 @@
                     {% elif user.is_staff %}
                     <span class="badge bg-primary">Staff</span>
                     {% else %}
-                    <span class="badge bg-secondary">Customer</span>
+                    <span class="badge bg-secondary">Collector</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.is_staff or user.is_superuser or row.pricelist_access %}
+                    <span class="badge bg-success">Yes</span>
+                    {% else %}
+                    <span class="badge bg-secondary">No</span>
                     {% endif %}
                 </td>
                 <td>
@@ -77,9 +86,10 @@
                     <a href="{% url 'usermanage:user_delete' user.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
                 </td>
             </tr>
+            {% endwith %}
             {% empty %}
             <tr>
-                <td colspan="7" class="text-center text-muted">No users found</td>
+                <td colspan="8" class="text-center text-muted">No users found</td>
             </tr>
             {% endfor %}
         </tbody>

@@ -2,7 +2,28 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 
+from .models import UserProfile
 from .roles import ROLE_CHOICES, ROLE_STAFF, role_of, role_to_flags
+
+
+def save_pricelist_access(form, user):
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    profile.can_access_pricelist = form.cleaned_data["pricelist_access"]
+    profile.save()
+
+
+class PricelistAccessField(forms.BooleanField):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("label", "Pricelist access")
+        kwargs.setdefault(
+            "help_text",
+            "Allow this user to view the price list. Always enabled for staff.",
+        )
+        kwargs.setdefault("required", False)
+        kwargs.setdefault(
+            "widget", forms.CheckboxInput(attrs={"class": "form-check-input"})
+        )
+        super().__init__(*args, **kwargs)
 
 
 class UserCreateForm(forms.ModelForm):
@@ -18,6 +39,8 @@ class UserCreateForm(forms.ModelForm):
         initial=ROLE_STAFF,
         widget=forms.Select(attrs={"class": "form-control"}),
     )
+
+    pricelist_access = PricelistAccessField()
 
     class Meta:
         model = User
@@ -57,6 +80,7 @@ class UserCreateForm(forms.ModelForm):
         user.is_active = True
         if commit:
             user.save()
+            save_pricelist_access(self, user)
         return user
 
 
@@ -65,6 +89,8 @@ class UserEditForm(forms.ModelForm):
         choices=ROLE_CHOICES,
         widget=forms.Select(attrs={"class": "form-control"}),
     )
+
+    pricelist_access = PricelistAccessField()
 
     class Meta:
         model = User
@@ -98,6 +124,10 @@ class UserEditForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance.pk:
             self.fields["role"].initial = role_of(self.instance)
+            profile = UserProfile.objects.filter(user=self.instance).first()
+            self.fields["pricelist_access"].initial = bool(
+                profile and profile.can_access_pricelist
+            )
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -106,6 +136,7 @@ class UserEditForm(forms.ModelForm):
         user.is_superuser = flags["is_superuser"]
         if commit:
             user.save()
+            save_pricelist_access(self, user)
         return user
 
 

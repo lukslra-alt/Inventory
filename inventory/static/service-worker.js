@@ -1,4 +1,4 @@
-const CACHE_NAME = "inventorypro-v21"; // Bumped version structure layer
+const CACHE_NAME = "inventorypro-v22"; // Bumped version structure layer
 const FILES_TO_CACHE = [
     "/",
     "/static/inventory/css/bootstrap.min.css",
@@ -53,7 +53,7 @@ self.addEventListener("fetch", event => {
 
     // 4. PAGES: network-first so online always shows fresh HTML (fixes stale
     //    cached pages persisting on the phone). Cache is only an offline fallback.
-    if (event.request.mode === "navigate") {
+    if (event.request.mode === "navigate" || url.pathname === "/offline-products/") {
         event.respondWith(
             fetch(event.request)
                 .then(response => {

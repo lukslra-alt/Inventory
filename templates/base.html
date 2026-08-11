@@ -71,9 +71,11 @@
             📦 InventoryPro
         </a>
         {% endif %}
+        {% if can_access_pricelist %}
         <a class="navbar-brand" href="{% url 'price_categories' %}">
             💲PriceList
         </a>
+        {% endif %}
         <a class="navbar-brand" href="{% url 'customer_list' %}">
             👥Customers
         </a>

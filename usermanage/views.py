@@ -4,13 +4,25 @@ from django.core.paginator import Paginator
 from django.shortcuts import render, get_object_or_404, redirect
 
 from .forms import UserCreateForm, UserEditForm, PasswordResetForm
+from .models import UserProfile
 from .roles import admin_required
 
 
 @admin_required
 def user_list(request):
     users = User.objects.all().order_by("username")
-    paginator = Paginator(users, 50)
+    profile_map = {
+        p.user_id: p.can_access_pricelist
+        for p in UserProfile.objects.all()
+    }
+    rows = [
+        {
+            "user": user,
+            "pricelist_access": profile_map.get(user.pk, False),
+        }
+        for user in users
+    ]
+    paginator = Paginator(rows, 50)
     page_obj = paginator.get_page(request.GET.get("page"))
     return render(
         request,

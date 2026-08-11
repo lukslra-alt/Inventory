@@ -10,6 +10,8 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.cache import never_cache
 
+from usermanage.roles import pricelist_required
+
 from io import BytesIO
 import math
 from reportlab.lib.pagesizes import A4
@@ -24,7 +26,7 @@ from reportlab.platypus import (
 
 # Shows all categories
 @never_cache
-@login_required
+@pricelist_required
 def price_categories(request):
     pages = PricePage.objects.all()
 
@@ -39,7 +41,7 @@ def price_categories(request):
 
 # Shows one category page
 @never_cache
-@login_required
+@pricelist_required
 def price_page(request, slug):
     page = get_object_or_404(
         PricePage.objects.prefetch_related(
@@ -410,7 +412,7 @@ def rename_category(request):
     return JsonResponse({'ok': True})
 
 
-@login_required
+@pricelist_required
 def price_page_pdf(request, slug):
     page = get_object_or_404(
         PricePage.objects.prefetch_related(

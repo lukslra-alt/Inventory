@@ -74,8 +74,8 @@ def dashboard(request):
         "low_stock": Product.objects.filter(active=True, status="LOW").count(),
         "nil_stock": Product.objects.filter(active=True, status="NIL").count(),
         "sync_setting": SyncSetting.objects.first(),
-        "show_cost": request.user.is_superuser,
-        "is_admin": request.user.is_superuser,
+        "show_cost": request.user.is_staff or request.user.is_superuser,
+        "is_admin": request.user.is_staff or request.user.is_superuser,
         "query_string": query_string,
     }
     return render(request, "inventory/dashboard.html", context)
@@ -109,14 +109,14 @@ def search_products(request):
             "price": str(product.sales_price),
             "status": product.status,
         }
-        if request.user.is_superuser and hasattr(product, "cost"):
+        if (request.user.is_staff or request.user.is_superuser) and hasattr(product, "cost"):
             entry["cost"] = str(product.cost)
         data.append(entry)
 
     return JsonResponse({"products": data})
 
 
-@admin_required
+@staff_member_required
 def product_edit(request, pk):
     product = get_object_or_404(Product, item=pk, active=True)
     if request.method == "POST":
@@ -188,7 +188,7 @@ def offline_products(request):
         "item", "product_name", "category", "subcategory", "level3", "level4",
         "hierarchy_path", "sales_price", "qty", "status",
     ]
-    if request.user.is_superuser:
+    if (request.user.is_staff or request.user.is_superuser):
         fields.append("cost")
     products = Product.objects.filter(active=True).values(*fields)
     return JsonResponse(list(products), safe=False)

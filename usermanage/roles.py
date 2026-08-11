@@ -1,5 +1,8 @@
+from functools import wraps
+
 from django.conf import settings
 from django.contrib.auth.decorators import user_passes_test
+from django.shortcuts import redirect
 
 
 ROLE_ADMIN = "admin"
@@ -9,7 +12,7 @@ ROLE_CUSTOMER = "customer"
 ROLE_CHOICES = [
     (ROLE_ADMIN, "Admin (full access)"),
     (ROLE_STAFF, "Staff (inventory, pricelist, customers)"),
-    (ROLE_CUSTOMER, "Customer (pricelist and customers only)"),
+    (ROLE_CUSTOMER, "Collector (customers only)"),
 ]
 
 
@@ -19,6 +22,15 @@ def is_admin(user):
 
 def is_staff(user):
     return bool(user.is_authenticated and user.is_staff)
+
+
+def can_access_pricelist(user):
+    if not user.is_authenticated:
+        return False
+    if user.is_staff or user.is_superuser:
+        return True
+    profile = getattr(user, "userprofile", None)
+    return bool(profile and profile.can_access_pricelist)
 
 
 def role_of(user):
@@ -43,3 +55,15 @@ def admin_required(view_func):
         login_url=settings.LOGIN_URL,
         redirect_field_name=None,
     )(view_func)
+
+
+def pricelist_required(view_func):
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect(settings.LOGIN_URL)
+        if not can_access_pricelist(request.user):
+            return redirect("customer_list")
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
