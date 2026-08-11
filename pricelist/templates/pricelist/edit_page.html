@@ -260,6 +260,12 @@ Edit {{ page.name }} - InventoryPro
         return match ? decodeURIComponent(match[2]) : "";
     }
 
+    // Reload if the browser restored this page from bfcache, so reorder
+    // changes are always reflected after using the Back button.
+    window.addEventListener("pageshow", function (e) {
+        if (e.persisted) location.reload();
+    });
+
     function csrf() {
         const el = document.querySelector("[name=csrfmiddlewaretoken]");
         return el ? el.value : getCookie("csrftoken");

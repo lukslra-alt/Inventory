@@ -22,6 +22,18 @@ urlpatterns = [
     ),
 
     path(
+        'reorder-categories/',
+        views.reorder_categories,
+        name='reorder_categories'
+    ),
+
+    path(
+        'rename-category/',
+        views.rename_category,
+        name='rename_category'
+    ),
+
+    path(
         '<slug:slug>/',
         views.price_page,
         name='price_page'

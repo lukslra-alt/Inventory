@@ -8,9 +8,11 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.views.decorators.cache import never_cache
 
 
 # Shows all categories
+@never_cache
 @login_required
 def price_categories(request):
     pages = PricePage.objects.all()
@@ -25,6 +27,7 @@ def price_categories(request):
 
 
 # Shows one category page
+@never_cache
 @login_required
 def price_page(request, slug):
     page = get_object_or_404(
@@ -179,6 +182,7 @@ def add_category(request):
     )
 
 
+@never_cache
 @staff_member_required
 def price_manage(request):
     pages = PricePage.objects.prefetch_related(
@@ -189,7 +193,7 @@ def price_manage(request):
             'items',
             filter=Q(items__visible=True)
         ),
-    ).all()
+    ).order_by('display_order', 'id')
 
     total_pages = pages.count()
     total_items = sum(p.total_items for p in pages)
@@ -356,5 +360,40 @@ def remove_item(request, page_id):
             id=obj_id,
             page_id=page_id
         ).delete()
+
+    return JsonResponse({'ok': True})
+
+
+@staff_member_required
+@require_POST
+def reorder_categories(request):
+    order = request.POST.getlist('order')
+
+    for position, page_id in enumerate(order, start=1):
+        PricePage.objects.filter(
+            id=page_id
+        ).update(display_order=position)
+
+    return JsonResponse({'ok': True})
+
+
+@staff_member_required
+@require_POST
+def rename_category(request):
+    page_id = request.POST.get('id')
+    name = (request.POST.get('name') or '').strip()
+
+    if not page_id or not name:
+        return JsonResponse(
+            {'ok': False, 'error': 'Category name is required'}
+        )
+
+    page = get_object_or_404(
+        PricePage,
+        id=page_id
+    )
+
+    page.name = name
+    page.save()
 
     return JsonResponse({'ok': True})

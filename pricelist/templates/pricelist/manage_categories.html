@@ -51,6 +51,40 @@ Price List Management
     .category-table tbody tr:hover {
         background-color: #f8f9fa;
     }
+
+    .category-table tr.sortable-row {
+        cursor: grab;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+    }
+
+    .category-table tr.sortable-row td:first-child {
+        touch-action: none;
+    }
+
+    .category-table tr.dragging {
+        opacity: 0.4;
+    }
+
+    .category-name {
+        border: none;
+        background: transparent;
+        padding: 0.25rem 0.35rem;
+        border-radius: 4px;
+        font-weight: 600;
+        color: #212529;
+        width: 100%;
+        max-width: 340px;
+        text-overflow: ellipsis;
+    }
+
+    .category-name:hover,
+    .category-name:focus {
+        outline: none;
+        background: #fff;
+        border: 1px solid #ced4da;
+    }
 </style>
 
 <div class="container-fluid p-3">
@@ -58,11 +92,16 @@ Price List Management
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
         <div>
             <h4 class="mb-1 fw-bold">Price List Management</h4>
-            <p class="text-muted mb-0">Manage categories, products and visibility</p>
+            <p class="text-muted mb-0">Drag categories to reorder, then press Save Order</p>
         </div>
-        <a href="{% url 'add_category' %}" class="btn btn-success">
-            <i class="bi bi-plus-lg me-1"></i> Add New Category
-        </a>
+        <div class="d-flex gap-2">
+            <button id="saveOrderBtn" class="btn btn-primary" disabled>
+                <i class="bi bi-check-lg me-1"></i> Save Order
+            </button>
+            <a href="{% url 'add_category' %}" class="btn btn-success">
+                <i class="bi bi-plus-lg me-1"></i> Add New Category
+            </a>
+        </div>
     </div>
 
     <!-- Stats -->
@@ -93,6 +132,7 @@ Price List Management
             <table class="table category-table table-hover align-middle mb-0">
                 <thead>
                     <tr>
+                        <th style="width: 40px;"></th>
                         <th>Category</th>
                         <th class="text-center">Products</th>
                         <th class="text-center">Visible</th>
@@ -101,12 +141,18 @@ Price List Management
                 </thead>
                 <tbody>
                     {% for page in pages %}
-                    <tr>
+                    <tr class="sortable-row" draggable="true" data-id="{{ page.id }}">
+                        <td class="text-center">
+                            <i class="bi bi-grip-vertical text-muted"></i>
+                        </td>
                         <td>
-                            <a href="{% url 'price_page' page.slug %}"
-                               class="text-decoration-none fw-semibold text-dark">
-                                {{ page.name }}
-                            </a>
+                            <input type="text"
+                                   class="category-name"
+                                   value="{{ page.name }}"
+                                   data-id="{{ page.id }}"
+                                   data-original="{{ page.name }}"
+                                   autocomplete="off"
+                                   title="Click to rename, then press Enter or click away">
                         </td>
                         <td class="text-center">
                             <span class="badge bg-secondary">{{ page.total_items }}</span>
@@ -143,7 +189,7 @@ Price List Management
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="text-center text-muted py-5">
+                        <td colspan="5" class="text-center text-muted py-5">
                             No price list categories yet.
                             <a href="{% url 'add_category' %}"
                                class="d-block mt-2">Create your first category</a>
@@ -156,5 +202,206 @@ Price List Management
     </div>
 
 </div>
+
+<div style="display: none;">{% csrf_token %}</div>
+
+<script>
+(function () {
+    const tbody = document.querySelector('.category-table tbody');
+    if (!tbody) return;
+
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp("(^|; )" + name + "=([^;]*)"));
+        return match ? decodeURIComponent(match[2]) : "";
+    }
+
+    // Reload if the browser restored this page from bfcache, so the order is
+    // always fresh after using the Back button.
+    window.addEventListener("pageshow", function (e) {
+        if (e.persisted) location.reload();
+    });
+
+    function csrf() {
+        const el = document.querySelector("[name=csrfmiddlewaretoken]");
+        return el ? el.value : getCookie("csrftoken");
+    }
+
+    function post(url, data) {
+        const params = data instanceof URLSearchParams
+            ? data
+            : new URLSearchParams(data);
+        return fetch(url, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": csrf(),
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: params.toString()
+        });
+    }
+
+    // ---- Drag to reorder categories (saved via Save Order button) ----
+    let dragRow = null;
+
+    tbody.addEventListener("dragstart", function (e) {
+        const row = e.target.closest("tr.sortable-row");
+        if (!row) return;
+        dragRow = row;
+        row.classList.add("dragging");
+        e.dataTransfer.effectAllowed = "move";
+    });
+
+    tbody.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        const row = e.target.closest("tr.sortable-row");
+        if (!row || row === dragRow) return;
+        const rect = row.getBoundingClientRect();
+        const after = (e.clientY - rect.top) > (rect.height / 2);
+        if (after) {
+            row.after(dragRow);
+        } else {
+            row.before(dragRow);
+        }
+    });
+
+    tbody.addEventListener("drop", function (e) {
+        e.preventDefault();
+    });
+
+    tbody.addEventListener("dragend", function () {
+        if (!dragRow) return;
+        dragRow.classList.remove("dragging");
+        dragRow = null;
+        markDirty();
+    });
+
+    // ---- Touch drag support (iOS Safari) ----
+    let touchDragRow = null;
+
+    function rowAtTouchY(y) {
+        const rows = tbody.querySelectorAll("tr.sortable-row");
+        for (let i = 0; i < rows.length; i++) {
+            const rect = rows[i].getBoundingClientRect();
+            if (y >= rect.top && y <= rect.bottom) {
+                return { row: rows[i], after: (y - rect.top) > (rect.height / 2) };
+            }
+        }
+        return null;
+    }
+
+    tbody.addEventListener("touchstart", function (e) {
+        const handle = e.target.closest(".bi-grip-vertical");
+        if (!handle) return;
+        const row = handle.closest("tr.sortable-row");
+        if (!row) return;
+        touchDragRow = row;
+        row.classList.add("dragging");
+    }, { passive: true });
+
+    tbody.addEventListener("touchmove", function (e) {
+        if (!touchDragRow) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        const target = rowAtTouchY(touch.clientY);
+        if (!target || target.row === touchDragRow) return;
+        if (target.after) {
+            target.row.after(touchDragRow);
+        } else {
+            target.row.before(touchDragRow);
+        }
+    }, { passive: false });
+
+    function endTouchDrag() {
+        if (!touchDragRow) return;
+        touchDragRow.classList.remove("dragging");
+        touchDragRow = null;
+        markDirty();
+    }
+
+    tbody.addEventListener("touchend", endTouchDrag);
+    tbody.addEventListener("touchcancel", endTouchDrag);
+
+    // ---- Save Order button ----
+    const saveBtn = document.getElementById("saveOrderBtn");
+
+    function markDirty() {
+        if (!saveBtn) return;
+        saveBtn.disabled = false;
+        saveBtn.classList.add("btn-warning");
+        saveBtn.classList.remove("btn-primary");
+        saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Save Order';
+    }
+
+    saveBtn.addEventListener("click", function () {
+        const params = new URLSearchParams();
+        tbody.querySelectorAll("tr.sortable-row").forEach(function (row) {
+            params.append("order", row.dataset.id);
+        });
+
+        saveBtn.disabled = true;
+        saveBtn.classList.remove("btn-warning");
+        saveBtn.classList.add("btn-primary");
+        saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Saving...';
+
+        post("{% url 'reorder_categories' %}", params)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.ok) throw new Error("save failed");
+                saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Saved';
+                saveBtn.classList.add("btn-success");
+                saveBtn.classList.remove("btn-primary");
+                setTimeout(function () {
+                    saveBtn.disabled = true;
+                    saveBtn.classList.remove("btn-success");
+                    saveBtn.classList.add("btn-primary");
+                    saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Save Order';
+                }, 1500);
+            })
+            .catch(function () {
+                saveBtn.disabled = false;
+                saveBtn.classList.add("btn-warning");
+                saveBtn.classList.remove("btn-primary");
+                saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Save Order';
+            });
+    });
+
+    // ---- Inline rename ----
+    document.querySelectorAll(".category-name").forEach(function (input) {
+        input.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                input.blur();
+            }
+            if (e.key === "Escape") {
+                input.value = input.dataset.original;
+                input.blur();
+            }
+        });
+
+        input.addEventListener("change", function () {
+            const id = input.dataset.id;
+            const name = input.value.trim();
+
+            if (!name) {
+                input.value = input.dataset.original;
+                return;
+            }
+
+            post("{% url 'rename_category' %}", { id: id, name: name })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.ok) {
+                        input.dataset.original = name;
+                    } else {
+                        input.value = input.dataset.original;
+                    }
+                })
+                .catch(function () {
+                    input.value = input.dataset.original;
+                });
+        });
+    });
+})();
+</script>
 
 {% endblock %}
