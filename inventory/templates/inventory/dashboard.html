@@ -7,7 +7,71 @@
 <style>
     body { background: #f8f9fa; }
 
-    .category-box { max-height: 80vh; overflow-y: auto; }
+    .category-icon {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 110px;
+        min-height: 52px;
+        padding: 0.5rem 0.4rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.6rem;
+        background: #fff;
+        color: #212529;
+        text-align: center;
+        transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.1s ease;
+    }
+    .category-icon:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.12);
+        border-color: #0d6efd;
+    }
+    .category-icon.active {
+        border-color: #0d6efd;
+        background: #e7f1ff;
+        box-shadow: 0 0 0 0.15rem rgba(13,110,253,0.25);
+    }
+    .category-icon .label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        line-height: 1.2;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .subcategory-icon {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.3rem 0.7rem;
+        border: 1px solid #dee2e6;
+        border-radius: 2rem;
+        background: #fff;
+        color: #212529;
+        font-size: 0.82rem;
+        font-weight: 500;
+    }
+    .subcategory-icon:hover {
+        border-color: #0d6efd;
+        background: #e7f1ff;
+    }
+    .subcategory-icon.active {
+        border-color: #0d6efd;
+        background: #e7f1ff;
+    }
+    @media (max-width: 767.98px) {
+        .category-icons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+        .category-icon {
+            width: auto;
+            min-height: 48px;
+        }
+    }
     #productList .table-responsive { overflow-x: auto; }
     #productList table.table { table-layout: fixed; width: 100%; }
     #productList table.table th,
@@ -65,110 +129,123 @@
 
 <div class="container-fluid p-3">
     <h4 class="mb-3">Inventory</h4>
-    <div class="row">
-        <!-- ===================== CATEGORY SIDEBAR ====================== -->
-        <div class="col-md-3">
-            <!-- Desktop category (Visible on desktop, hidden on mobile) -->
-            <div class="card d-none d-md-block">
-                <div class="card-header fw-bold">
-                    Categories
-                </div>
-                <div class="card-body category-box">
-                    {% include "inventory/category_tree.html" %}
-                </div>
+
+    <!-- SEARCH INPUT (on top) -->
+    <div class="mb-3">
+        <label for="searchBox"></label><input type="text" id="searchBox" class="form-control" placeholder="Search products..." autocomplete="off">
+    </div>
+
+    <!-- CATEGORY ICONS (collapsible) -->
+    <div class="mb-3">
+        <button class="btn btn-sm btn-outline-secondary mb-2" type="button" id="categoryToggle" onclick="toggleCategories()" aria-expanded="true" aria-controls="categoryPanel">
+            <span id="categoryChevron">&#9662;</span> Categories
+        </button>
+        <div id="categoryPanel">
+            <div class="d-flex flex-wrap gap-2 category-icons">
+                <a href="{% url 'dashboard' %}" class="category-icon {% if not category %}active{% endif %}">
+                    <span class="label">All</span>
+                </a>
+                {% for c in category_icons %}
+                <a href="?category={{ c.name|urlencode }}#results" class="category-icon {% if category == c.name %}active{% endif %}">
+                    <span class="label" title="{{ c.name }}">{{ c.name }}</span>
+                </a>
+                {% endfor %}
             </div>
 
-            <!-- Mobile button (Visible on mobile, hidden on desktop) -->
-            <button class="btn btn-primary d-md-none mb-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileCategories" aria-controls="mobileCategories">
-                ☰ Categories
-            </button>
-        </div>
-
-        <!-- ===================== PRODUCT AREA ====================== -->
-        <div class="col-md-9">
-            <!-- SEARCH INPUT -->
-            <div class="mb-3">
-                <label for="searchBox"></label><input type="text" id="searchBox" class="form-control" placeholder="Search products..." autocomplete="off">
-            </div>
-
-            <!-- PRODUCT LIST ASYNC WRAPPER -->
-            <div id="productList">
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover align-middle">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Product</th>
-                                <th class="col-qty">Qty</th>
-                                <th class="col-price">Price</th>
-                                {% if show_cost %}
-                                <th class="col-cost">Cost</th>
-                                {% endif %}
-                                {% if is_admin %}
-                                <th class="col-status">Status</th>
-                                <th class="col-action">Action</th>
-                                {% endif %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for product in page_obj %}
-                            <tr>
-                                <td title="{{ product.product_name }}">{{ product.product_name }}</td>
-                                <td class="col-qty">{{ product.qty|intcomma }}</td>
-                                <td class="col-price">{{ product.sales_price|intcomma }}</td>
-                                {% if show_cost %}
-                                <td class="col-cost">{{ product.cost|intcomma }}</td>
-                                {% endif %}
-                                {% if is_admin %}
-                                <td class="col-status"><span class="badge bg-secondary">{{ product.status }}</span></td>
-                                <td class="col-action">
-                                    <a href="{% url 'product_edit' product.item %}" class="btn btn-sm btn-primary">Edit</a>
-                                </td>
-                                {% endif %}
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="6" class="text-center text-muted">No products found</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-
-                    <!-- Pagination Navigation Controls -->
-                    <nav>
-                        <ul class="pagination">
-                            {% if page_obj.has_previous %}
-                            <li class="page-item">
-                                <a class="page-link" href="?{{ query_string }}&page={{ page_obj.previous_page_number }}">Previous</a>
-                            </li>
-                            {% endif %}
-
-                            {% for num in page_obj.paginator.page_range %}
-                            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
-                                <a class="page-link" href="?{{ query_string }}&page={{ num }}">{{ num }}</a>
-                            </li>
-                            {% endfor %}
-
-                            {% if page_obj.has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="?{{ query_string }}&page={{ page_obj.next_page_number }}">Next</a>
-                            </li>
-                            {% endif %}
-                        </ul>
-                    </nav>
+            {% if subcategory_icons %}
+            <div class="subcategory-bar mt-3 pt-2 border-top">
+                <div class="small text-muted fw-semibold mb-2">Subcategories</div>
+                <div class="d-flex flex-wrap gap-2 subcategory-icons">
+                    {% for s in subcategory_icons %}
+                    <a href="?category={{ category|urlencode }}&subcategory={{ s|urlencode }}#results" class="subcategory-icon {% if subcategory == s %}active{% endif %}">
+                        <span class="label">{{ s }}</span>
+                    </a>
+                    {% endfor %}
                 </div>
             </div>
+            {% endif %}
         </div>
     </div>
-</div>
 
-<!-- ===================== MOBILE CATEGORY DRAWER ====================== -->
-<div class="offcanvas offcanvas-start d-md-none" tabindex="-1" id="mobileCategories" aria-labelledby="mobileCategoriesLabel">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title fw-bold" id="mobileCategoriesLabel">Categories</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <!-- RESULTS: stock filter + product list -->
+    <div id="results">
+    <!-- STOCK FILTER -->
+    <div class="mb-3 d-flex flex-wrap gap-2">
+                <div class="btn-group" role="group" aria-label="Stock filter">
+                    <button type="button" class="btn btn-sm btn-outline-secondary stock-filter-btn active" data-stock="all" onclick="setStockFilter('all')">All</button>
+                    <button type="button" class="btn btn-sm btn-outline-warning stock-filter-btn" data-stock="low" onclick="setStockFilter('low')">Low ({{ low_stock }})</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger stock-filter-btn" data-stock="nil" onclick="setStockFilter('nil')">Nil ({{ nil_stock }})</button>
+                </div>
     </div>
-    <div class="offcanvas-body category-box">
-        {% include "inventory/category_tree.html" %}
+
+    <!-- PRODUCT LIST ASYNC WRAPPER -->
+    <div id="productList">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th class="sortable" data-sort="product_name">Product</th>
+                            <th class="col-qty sortable" data-sort="qty">Qty</th>
+                            <th class="col-price">Price</th>
+                    {% if show_cost %}
+                    <th class="col-cost">Cost</th>
+                    {% endif %}
+                    {% if is_admin %}
+                    <th class="col-status sortable" data-sort="status">Status</th>
+                    <th class="col-action">Action</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in page_obj %}
+                <tr>
+                    <td title="{{ product.product_name }}">{{ product.product_name }}</td>
+                            <td class="col-qty">{{ product.qty|intcomma }}</td>
+                            <td class="col-price">{{ product.sales_price|intcomma }}</td>
+                    {% if show_cost %}
+                    <td class="col-cost">{{ product.cost|intcomma }}</td>
+                    {% endif %}
+                    {% if is_admin %}
+                    <td class="col-status">
+                        <span class="badge {% if product.status == 'NIL' %}bg-danger{% elif product.status == 'LOW' %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ product.status }}</span>
+                    </td>
+                    <td class="col-action">
+                        <a href="{% url 'product_edit' product.item %}" class="btn btn-sm btn-primary">Edit</a>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">No products found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Pagination Navigation Controls -->
+            <nav>
+                <ul class="pagination">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{{ query_string }}&page={{ page_obj.previous_page_number }}">Previous</a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                        <a class="page-link" href="?{{ query_string }}&page={{ num }}">{{ num }}</a>
+                    </li>
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{{ query_string }}&page={{ page_obj.next_page_number }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        </div>
     </div>
 </div>
 
@@ -178,6 +255,16 @@
         isAdmin: {{ is_admin | yesno:"true,false" }},
         showCost: {{ show_cost | yesno:"true,false" }}
     };
+
+    function toggleCategories() {
+        const panel = document.getElementById("categoryPanel");
+        const chevron = document.getElementById("categoryChevron");
+        const toggle = document.getElementById("categoryToggle");
+        if (!panel) return;
+        const collapsed = panel.classList.toggle("d-none");
+        if (chevron) chevron.innerHTML = collapsed ? "&#9656;" : "&#9662;";
+        if (toggle) toggle.setAttribute("aria-expanded", String(!collapsed));
+    }
 </script>
 
 <!-- Load External Logic Engine Core Dependencies -->

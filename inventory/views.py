@@ -34,6 +34,18 @@ def apply_product_filters(products, search="", category="", subcategory="", leve
     return products
 
 
+def count_tree_products(node):
+    """Recursively count products nested under a category-tree node."""
+    total = 0
+    children = node.get("children", {}) or {}
+    total += len(children.get("products", []) or [])
+    for key, child in children.items():
+        if key == "products":
+            continue
+        total += count_tree_products(child)
+    return total
+
+
 @login_required
 def dashboard(request):
     """
@@ -61,6 +73,32 @@ def dashboard(request):
     params.pop("page", None)
     query_string = params.urlencode()
 
+    tree = get_category_tree()
+    emoji_palette = [
+        "📦", "🍎", "🥖", "🥤", "🧴", "🧹", "🍞", "🥛",
+        "🍫", "🍚", "🛒", "🧃", "🧇", "🥫", "🍪", "🍬",
+    ]
+    category_icons = []
+    for i, (key, node) in enumerate(tree.items()):
+        if key == "products":
+            continue
+        category_icons.append({
+            "name": key,
+            "icon": emoji_palette[i % len(emoji_palette)],
+        })
+
+    subcategory_icons = []
+    if category and category in tree:
+        for sub_key, sub_node in tree[category].get("children", {}).items():
+            if sub_key == "products":
+                continue
+            # Only show as a subheading when it actually groups multiple
+            # products. Single-product "subcategories" whose name equals the
+            # product name are really just products and should not appear
+            # as a heading (the product is already listed below).
+            if sub_node.get("type") == "subcategory" and count_tree_products(sub_node) > 1:
+                subcategory_icons.append(sub_key)
+
     context = {
         "products": page_obj,
         "page_obj": page_obj,
@@ -68,11 +106,16 @@ def dashboard(request):
         "subcategory": subcategory,
         "level3": level3,
         "level4": level4,
-        "category_tree": get_category_tree(),
+        "category_tree": tree,
+        "category_icons": category_icons,
+        "subcategory_icons": subcategory_icons,
         "search": search,
         "total_products": Product.objects.filter(active=True).count(),
         "low_stock": Product.objects.filter(active=True, status="LOW").count(),
         "nil_stock": Product.objects.filter(active=True, status="NIL").count(),
+        "reorder_count": Product.objects.filter(
+            active=True, status__in=["LOW", "NIL"]
+        ).count(),
         "sync_setting": SyncSetting.objects.first(),
         "show_cost": request.user.is_staff or request.user.is_superuser,
         "is_admin": request.user.is_staff or request.user.is_superuser,
@@ -108,6 +151,7 @@ def search_products(request):
             "qty": product.qty,
             "price": str(product.sales_price),
             "status": product.status,
+            "reorder_qty": str(product.reorder_qty),
         }
         if (request.user.is_staff or request.user.is_superuser) and hasattr(product, "cost"):
             entry["cost"] = str(product.cost)
@@ -186,7 +230,7 @@ def sync_customers(request):
 def offline_products(request):
     fields = [
         "item", "product_name", "category", "subcategory", "level3", "level4",
-        "hierarchy_path", "sales_price", "qty", "status",
+        "hierarchy_path", "sales_price", "qty", "reorder_qty", "status",
     ]
     if (request.user.is_staff or request.user.is_superuser):
         fields.append("cost")
