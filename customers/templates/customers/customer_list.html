@@ -12,7 +12,6 @@
     <thead class="table-dark">
         <tr>
             <th>Name</th>
-            <th class="text-end">Total Qty</th>
             <th class="text-end">Total Amount</th>
             <th class="text-end">Balance</th>
         </tr>
@@ -24,14 +23,18 @@
                 <a href="{% url 'customer_detail' customer.pk %}">
                     {{ customer.name }}
                 </a>
+                {% if customer.due_status == "overdue" %}
+                <span class="badge bg-danger ms-1">Overdue</span>
+                {% elif customer.due_status == "due" %}
+                <span class="badge bg-warning text-dark ms-1">Due</span>
+                {% endif %}
             </td>
-            <td class="text-end">{{ customer.total_qty|intcomma }}</td>
             <td class="text-end">{{ customer.total_amount|intcomma }}</td>
             <td class="text-end">{{ customer.balance|intcomma }}</td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="4" class="text-center text-muted">
+            <td colspan="3" class="text-center text-muted">
                 No customers yet. Run <code>manage.py import_customers</code>.
             </td>
         </tr>

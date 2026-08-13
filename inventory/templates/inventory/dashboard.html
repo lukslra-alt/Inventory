@@ -125,6 +125,18 @@
             -webkit-overflow-scrolling: touch;
         }
     }
+    @media (min-width: 768px) {
+        #productList .table-responsive {
+            overflow-x: clip;
+        }
+        #productList table.table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background-color: #212529;
+            box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.15);
+        }
+    }
 </style>
 
 <div class="container-fluid p-3">
