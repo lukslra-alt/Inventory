@@ -6,17 +6,9 @@ from datetime import datetime
 from django.conf import settings
 
 
-SPREADSHEET_ID = "1j9azGFDjOFDCs1OUi36R4t6NMBgJLBIR"
-GID = "1077367751"
-
 CUSTOMER_FILE_ID = "1h5FRhHggQuR4yGCSAN8C175YXhJ71_cR"
 
 INVENTORY_FILE_ID = "10tJtiUUP96gAYDICu34FCZpQWyIh4l0K"
-
-GOOGLE_SHEET_URL = (
-    f"https://docs.google.com/spreadsheets/d/"
-    f"{SPREADSHEET_ID}/export?format=xlsx&gid={GID}"
-)
 
 CUSTOMER_CSV_URL = (
     f"https://drive.google.com/uc?export=download&id={CUSTOMER_FILE_ID}"
@@ -58,10 +50,6 @@ def _download(url, prefix, extension):
             "success": False,
             "error": str(error),
         }
-
-
-def download_google_sheet():
-    return _download(GOOGLE_SHEET_URL, "inventory", "xlsx")
 
 
 def download_customer_csv():
