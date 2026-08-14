@@ -2,7 +2,7 @@ import os
 
 from django.utils import timezone
 
-from inventory.services.google_client import download_google_sheet
+from inventory.services.google_client import download_inventory_csv
 from inventory.services.qb_parser import QuickBooksParser
 from inventory.services.sync_engine import sync_products
 from inventory.models import SyncHistory, SyncSetting
@@ -18,7 +18,7 @@ def _get_setting():
 def sync_inventory():
     setting = _get_setting()
 
-    download = download_google_sheet()
+    download = download_inventory_csv()
 
     if not download["success"]:
         SyncHistory.objects.create(

@@ -11,6 +11,8 @@ GID = "855109319"
 
 CUSTOMER_FILE_ID = "1h5FRhHggQuR4yGCSAN8C175YXhJ71_cR"
 
+INVENTORY_FILE_ID = "10tJtiUUP96gAYDICu34FCZpQWyIh4l0K"
+
 GOOGLE_SHEET_URL = (
     f"https://docs.google.com/spreadsheets/d/"
     f"{SPREADSHEET_ID}/export?format=xlsx&gid={GID}"
@@ -18,6 +20,10 @@ GOOGLE_SHEET_URL = (
 
 CUSTOMER_CSV_URL = (
     f"https://drive.google.com/uc?export=download&id={CUSTOMER_FILE_ID}"
+)
+
+INVENTORY_CSV_URL = (
+    f"https://drive.google.com/uc?export=download&id={INVENTORY_FILE_ID}"
 )
 
 TEMP_FOLDER = os.path.join(settings.BASE_DIR, "temp")
@@ -60,3 +66,7 @@ def download_google_sheet():
 
 def download_customer_csv():
     return _download(CUSTOMER_CSV_URL, "customers", "csv")
+
+
+def download_inventory_csv():
+    return _download(INVENTORY_CSV_URL, "inventory", "csv")

@@ -5,13 +5,13 @@ from inventory.services.google_sync import sync_inventory
 
 class Command(BaseCommand):
 
-    help = "Synchronize inventory from Google Sheet"
+    help = "Synchronize inventory from CSV file"
 
 
     def handle(self, *args, **options):
 
         self.stdout.write(
-            "Downloading Google Sheet..."
+            "Reading inventory CSV..."
         )
 
 
