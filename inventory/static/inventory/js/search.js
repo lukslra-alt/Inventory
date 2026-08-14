@@ -13,6 +13,12 @@ function formatNumber(value, decimals) {
     return num.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
+function statusClass(status) {
+    if (status === "NIL") return "bg-danger";
+    if (status === "LOW") return "bg-warning text-dark";
+    return "bg-success";
+}
+
 function renderSearchResults(products) {
     const productList = document.getElementById("productList");
     const isAdmin = window.InventoryState ? window.InventoryState.isAdmin : false;
@@ -33,7 +39,7 @@ function renderSearchResults(products) {
                 <thead class="table-dark">
                     <tr>
                         <th>Product</th>
-                        <th>Qty</th>
+                        <th class="col-qty">Qty</th>
                         <th class="col-price">Price</th>
                         ${showCost ? "<th class=\"col-cost\">Cost</th>" : ""}
                         ${isAdmin ? "<th>Status</th><th>Action</th>" : ""}
@@ -47,11 +53,11 @@ function renderSearchResults(products) {
         html += `
             <tr>
                 <td>${product.name || product.product_name}</td>
-                <td>${formatNumber(product.qty)}</td>
+                <td class="col-qty">${formatNumber(product.qty)}</td>
                 <td class="col-price">${formatNumber(product.price || product.sales_price, 2)}</td>
                 ${showCost ? `<td class="col-cost">${formatNumber(product.cost || '0.00', 2)}</td>` : ""}
                 ${isAdmin ? `
-                    <td><span class="badge bg-secondary">${product.status}</span></td>
+                    <td><span class="badge ${statusClass(product.status)}">${product.status}</span></td>
                     <td>
                         <a href="/product/${id}/edit/" class="btn btn-sm btn-primary">Edit</a>
                     </td>

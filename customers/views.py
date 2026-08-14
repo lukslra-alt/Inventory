@@ -1,18 +1,48 @@
+import calendar
+from datetime import date
+
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Count
+from django.db.models import Count, Min
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
 
 from customers.models import Customer, Invoice
 from customers.pdf import invoice_pdf
 
 
+def _months_ago(months):
+    today = timezone.now().date()
+    month = today.month - months
+    year = today.year
+    if month <= 0:
+        month += 12
+        year -= 1
+    day = min(today.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
+
+
 @login_required
 def customer_list(request):
-    customers = Customer.objects.annotate(
-        invoice_count=Count("invoices")
-    ).order_by("name")
+    cutoff_3 = _months_ago(3)
+    cutoff_6 = _months_ago(6)
+
+    customers = (
+        Customer.objects.annotate(
+            invoice_count=Count("invoices"),
+            oldest_invoice=Min("invoices__date"),
+        )
+        .order_by("name")
+    )
+
+    for customer in customers:
+        if customer.oldest_invoice and customer.oldest_invoice < cutoff_6:
+            customer.due_status = "overdue"
+        elif customer.oldest_invoice and customer.oldest_invoice < cutoff_3:
+            customer.due_status = "due"
+        else:
+            customer.due_status = ""
 
     paginator = Paginator(customers, 25)
     page_obj = paginator.get_page(request.GET.get("page"))
