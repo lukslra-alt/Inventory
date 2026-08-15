@@ -70,6 +70,12 @@ urlpatterns = [
     ),
 
     path(
+        'update-price/<int:page_id>/',
+        views.update_item_price,
+        name='update_item_price'
+    ),
+
+    path(
         'add-products/<int:page_id>/',
         views.add_products,
         name='add_products'

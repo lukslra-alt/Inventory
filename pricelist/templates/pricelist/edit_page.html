@@ -82,6 +82,9 @@ Edit {{ page.name }} - InventoryPro
             <a href="{% url 'price_manage' %}" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left me-1"></i> Back
             </a>
+            <button id="savePriceBtn" class="btn btn-success">
+                <i class="bi bi-currency-rupee me-1"></i> Save Prices
+            </button>
             <button id="saveOrderBtn" class="btn btn-primary">
                 <i class="bi bi-check-lg me-1"></i> Save Order
             </button>
@@ -181,6 +184,7 @@ Edit {{ page.name }} - InventoryPro
                             <th style="width: 40px;"></th>
                             <th>Product / Heading</th>
                             <th>Qty</th>
+                            <th>Cost</th>
                             <th>Price</th>
                             <th class="text-center">Visible</th>
                             <th class="text-end">Remove</th>
@@ -195,7 +199,23 @@ Edit {{ page.name }} - InventoryPro
                             </td>
                             <td>{{ obj.product.product_name }}</td>
                             <td>{{ obj.product.qty }}</td>
-                            <td>Rs. {{ obj.product.sales_price }}</td>
+                            <td>
+                                <input type="text"
+                                       class="form-control form-control-sm bg-secondary-subtle text-muted"
+                                       value="{{ obj.product.cost|floatformat:2 }}"
+                                       readonly
+                                       tabindex="-1"
+                                       aria-label="Cost (read only)">
+                            </td>
+                            <td>
+                                <input type="number"
+                                       step="0.01"
+                                       min="0"
+                                       class="form-control form-control-sm price-input"
+                                       data-id="{{ obj.id }}"
+                                       value="{{ obj.product.sales_price|floatformat:2 }}"
+                                       aria-label="Sales price">
+                            </td>
                             <td class="text-center">
                                 <button type="button"
                                         class="btn btn-sm toggle-btn {% if obj.visible %}btn-outline-success{% else %}btn-outline-danger{% endif %}"
@@ -222,6 +242,7 @@ Edit {{ page.name }} - InventoryPro
                             <td class="fw-bold text-uppercase">{{ obj.text }}</td>
                             <td></td>
                             <td></td>
+                            <td></td>
                             <td class="text-center">
                                 <span class="badge bg-warning text-dark">Heading</span>
                             </td>
@@ -237,7 +258,7 @@ Edit {{ page.name }} - InventoryPro
                         {% endif %}
                         {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
+                            <td colspan="7" class="text-center text-muted py-4">
                                 No items yet. Search above and add products, or add a heading.
                             </td>
                         </tr>
@@ -396,6 +417,39 @@ Edit {{ page.name }} - InventoryPro
                 .catch(function () {
                     btn.disabled = false;
                     btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Save Order';
+                });
+        });
+    }
+
+    const priceSaveBtn = document.getElementById("savePriceBtn");
+
+    if (priceSaveBtn) {
+        priceSaveBtn.addEventListener("click", function () {
+            // Append each price as its own "prices" parameter so the server
+            // receives them as a list via request.POST.getlist("prices").
+            const params = new URLSearchParams();
+            document.querySelectorAll(".price-input").forEach(function (input) {
+                params.append("prices", input.dataset.id + ":" + input.value.trim());
+            });
+
+            const btn = priceSaveBtn;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Saving...';
+
+            post("{% url 'update_item_price' page.id %}", params)
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Saved';
+                    btn.classList.add("btn-success");
+                    setTimeout(function () {
+                        btn.disabled = false;
+                        btn.classList.remove("btn-success");
+                        btn.innerHTML = '<i class="bi bi-currency-rupee me-1"></i> Save Prices';
+                    }, 1500);
+                })
+                .catch(function () {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-currency-rupee me-1"></i> Save Prices';
                 });
         });
     }

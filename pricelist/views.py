@@ -22,6 +22,7 @@ from usermanage.roles import pricelist_required
 
 from io import BytesIO
 import math
+from decimal import Decimal, InvalidOperation
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.lib import colors
@@ -314,6 +315,55 @@ def edit_page(request, page_id):
             'added_ids': added_ids,
         }
     )
+
+
+@staff_member_required
+@require_POST
+def update_item_price(request, page_id):
+    """
+    Update product sales prices from the edit page.
+
+    Prices are sent as a list of "item_id:price" strings. Each change is
+    written to the product's sales_price so it applies everywhere the
+    product appears (dashboard, PDFs, every price page).
+    """
+    page = get_object_or_404(
+        PricePage,
+        id=page_id
+    )
+
+    updated = 0
+    errors = 0
+
+    for entry in request.POST.getlist("prices"):
+        item_id, _, raw = entry.partition(":")
+
+        try:
+            price = Decimal(raw.strip())
+        except (InvalidOperation, AttributeError):
+            errors += 1
+            continue
+
+        if price < 0:
+            errors += 1
+            continue
+
+        item = PriceListItem.objects.filter(
+            id=item_id,
+            page=page,
+        ).select_related("product").first()
+
+        if item is None:
+            continue
+
+        product = item.product
+
+        if product.sales_price != price:
+            product.sales_price = price
+            product.save()
+            updated += 1
+
+    return JsonResponse({"ok": True, "updated": updated, "errors": errors})
 
 
 @staff_member_required
