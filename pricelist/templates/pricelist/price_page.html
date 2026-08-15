@@ -114,46 +114,6 @@ h2 {
     white-space: nowrap;
 }
 
-/* ---- Staff price editing ---- */
-.price-edit-area {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    white-space: nowrap;
-}
-
-.cost-readonly {
-    font-size: 12px;
-    color: #6c757d;
-    background: #e9ecef;
-    border-radius: 4px;
-    padding: 2px 6px;
-}
-
-.price-input {
-    width: 90px;
-    text-align: right;
-    font-size: 15px;
-    font-weight: 600;
-    border: 1px solid #ced4da;
-    border-radius: 6px;
-    padding: 2px 6px;
-}
-
-.price-input:hover {
-    border-color: #adb5bd;
-}
-
-.price-input:focus {
-    outline: none;
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.15);
-}
-
-.print-only {
-    display: none;
-}
-
     .footer {
         text-align: center;
         font-size: 12px;
@@ -192,16 +152,6 @@ h2 {
         display: flex;
     }
 
-    .price-edit-area,
-    .cost-readonly,
-    .price-input {
-        display: none !important;
-    }
-
-    .print-only {
-        display: inline;
-    }
-
     .price-container {
         margin: 0;
         max-width: 100%;
@@ -226,7 +176,6 @@ h2 {
     </div>
 
     <div class="price-toolbar">
-        <div style="display: none;">{% csrf_token %}</div>
         <div class="col-selector">
             <span class="col-label">Columns:</span>
             <button type="button" data-cols="1">1</button>
@@ -234,11 +183,6 @@ h2 {
             <button type="button" data-cols="3">3</button>
         </div>
         <div class="d-flex gap-2">
-            {% if request.user.is_staff or request.user.is_superuser %}
-            <button id="savePriceBtn" class="btn btn-success">
-                <i class="bi bi-check-lg me-1"></i> Save
-            </button>
-            {% endif %}
             <a id="pdfBtn" class="btn btn-outline-primary"
                data-base="{% url 'price_page_pdf' page.slug %}"
                href="{% url 'price_page_pdf' page.slug %}?cols=1">
@@ -263,25 +207,7 @@ h2 {
 
         <div class="grid-item">
             <span class="item-name">{{ entry.2.product.product_name }}</span>
-            {% if request.user.is_staff or request.user.is_superuser %}
-            <span class="price-edit-area">
-                <span class="cost-readonly" title="Cost (read only)">
-                    C: {{ entry.2.product.cost|floatformat:2 }}
-                </span>
-                <input type="number"
-                       class="price-input"
-                       data-id="{{ entry.2.id }}"
-                       value="{{ entry.2.product.sales_price|floatformat:2 }}"
-                       step="0.01"
-                       min="0"
-                       aria-label="Sales price for {{ entry.2.product.product_name }}">
-                <span class="price print-only">
-                    Rs. {{ entry.2.product.sales_price|floatformat:2 }}
-                </span>
-            </span>
-            {% else %}
             <span class="price">Rs. {{ entry.2.product.sales_price }}</span>
-            {% endif %}
         </div>
 
         {% endif %}
@@ -335,56 +261,6 @@ h2 {
     var saved = null;
     try { saved = localStorage.getItem("pricelist_cols"); } catch (e) {}
     setColumns(saved || "1");
-
-    // ---- Staff price editing ----
-    const saveBtn = document.getElementById("savePriceBtn");
-    if (saveBtn) {
-        function getCookie(name) {
-            const match = document.cookie.match(new RegExp("(^|; )" + name + "=([^;]*)"));
-            return match ? decodeURIComponent(match[2]) : "";
-        }
-
-        const csrfEl = document.querySelector("[name=csrfmiddlewaretoken]");
-        const csrfToken = csrfEl ? csrfEl.value : getCookie("csrftoken");
-
-        saveBtn.addEventListener("click", function () {
-            const prices = [];
-            document.querySelectorAll(".price-input").forEach(function (input) {
-                prices.push(input.dataset.id + ":" + input.value.trim());
-            });
-
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Saving...';
-
-            fetch("{% url 'update_item_price' page.id %}", {
-                method: "POST",
-                headers: {
-                    "X-CSRFToken": csrfToken,
-                    "Content-Type": "application/x-www-form-urlencoded"
-                },
-                body: "prices=" + prices.map(encodeURIComponent).join("&")
-            })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Saved';
-                    saveBtn.classList.add("btn-success");
-                    if (data.updated > 0) {
-                        // Refresh the page so all prices reflect the change.
-                        setTimeout(function () { location.reload(); }, 600);
-                    } else {
-                        setTimeout(function () {
-                            saveBtn.disabled = false;
-                            saveBtn.classList.remove("btn-success");
-                            saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Save';
-                        }, 1500);
-                    }
-                })
-                .catch(function () {
-                    saveBtn.disabled = false;
-                    saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Save';
-                });
-        });
-    }
 })();
 </script>
 
