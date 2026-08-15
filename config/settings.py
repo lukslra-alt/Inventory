@@ -33,6 +33,7 @@ ALLOWED_HOSTS = ['waseerdambulla.pythonanywhere.com', '127.0.0.1:8000', '127.0.0
 # Application definition
 
 INSTALLED_APPS = [
+    # Django core apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -41,9 +42,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
 
+    # Third-party
+    "adminsortable2",
+
+    # Project apps
     "inventory",
     "accounts",
-    "adminsortable2",
     "pricelist",
     "customers",
     "usermanage",
@@ -75,6 +79,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # Exposes can_access_pricelist to all templates.
                 'usermanage.context_processors.pricelist_access',
             ],
         },

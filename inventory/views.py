@@ -1,3 +1,5 @@
+"""Views for the inventory app: dashboard, product search and sync pages."""
+
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.management import call_command
@@ -14,6 +16,12 @@ from usermanage.roles import admin_required
 
 
 def apply_product_filters(products, search="", category="", subcategory="", level3="", level4=""):
+    """
+    Apply dashboard search and category-level filters to a Product queryset.
+
+    The search text is matched against the product name and every level of
+    the category hierarchy; the remaining arguments narrow by exact value.
+    """
     if search:
         products = products.filter(
             Q(product_name__icontains=search) |
@@ -162,11 +170,13 @@ def search_products(request):
 
 @staff_member_required
 def product_edit(request, pk):
+    """Inline admin form for editing a single product."""
     product = get_object_or_404(Product, item=pk, active=True)
     if request.method == "POST":
         form = ProductAdminForm(request.POST, instance=product)
         if form.is_valid():
             form.save()
+            # Recompute LOW/NIL stock status after the edit.
             product.calculate_status()
             product.save()
             messages.success(request, "Product updated successfully.")
@@ -183,6 +193,7 @@ def product_edit(request, pk):
 
 @admin_required
 def manual_sync(request):
+    """Run both inventory and customer sync commands in one request."""
     try:
         call_command("sync_inventory")
         call_command("sync_customers")
@@ -194,6 +205,7 @@ def manual_sync(request):
 
 @admin_required
 def sync_page(request):
+    """Sync dashboard showing the sync setting and recent history."""
     setting = SyncSetting.objects.first()
 
     return render(
@@ -208,6 +220,7 @@ def sync_page(request):
 
 @admin_required
 def sync_products(request):
+    """Trigger the product sync command and report the outcome."""
     try:
         call_command("sync_inventory")
         messages.success(request, "Product sync completed.")
@@ -218,6 +231,7 @@ def sync_products(request):
 
 @admin_required
 def sync_customers(request):
+    """Trigger the customer sync command and report the outcome."""
     try:
         call_command("sync_customers")
         messages.success(request, "Customer sync completed.")
@@ -228,10 +242,12 @@ def sync_customers(request):
 
 @staff_member_required
 def offline_products(request):
+    """Expose all active products as JSON for offline caching (PWA)."""
     fields = [
         "item", "product_name", "category", "subcategory", "level3", "level4",
         "hierarchy_path", "sales_price", "qty", "reorder_qty", "status",
     ]
+    # Cost is sensitive, so only expose it to staff/superusers.
     if (request.user.is_staff or request.user.is_superuser):
         fields.append("cost")
     products = Product.objects.filter(active=True).values(*fields)

@@ -9,6 +9,7 @@ from inventory.services.google_client import download_customer_csv
 
 
 class Command(BaseCommand):
+    """Download the customer CSV from Google Drive and import it when changed."""
 
     help = "Sync customers from the Google Drive CSV (only when changed)"
 
@@ -31,6 +32,7 @@ class Command(BaseCommand):
         try:
             file_hash = download["hash"]
 
+            # Skip when the sheet hash is unchanged since the last sync.
             if setting.customer_hash == file_hash:
                 SyncHistory.objects.create(
                     status="SKIPPED",
@@ -54,7 +56,8 @@ class Command(BaseCommand):
                 message=(
                     f"Customers: {result['customers']}, "
                     f"Invoices: {result['invoices']}, "
-                    f"Items: {result['items']}"
+                    f"Items: {result['items']}, "
+                    f"Deleted: {result['deleted']}"
                 ),
             )
 
@@ -62,6 +65,7 @@ class Command(BaseCommand):
             self.stdout.write(f"Customers: {result['customers']}")
             self.stdout.write(f"Invoices: {result['invoices']}")
             self.stdout.write(f"Items: {result['items']}")
+            self.stdout.write(f"Deleted: {result['deleted']}")
 
         finally:
             if os.path.exists(filepath):

@@ -1,3 +1,11 @@
+"""
+Price list app views: public category browsing plus staff management and PDF.
+
+Public pages are guarded by pricelist_required; management endpoints are
+restricted to staff and mostly return small JSON responses consumed by the
+management UI's drag-and-drop ordering.
+"""
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from .models import PricePage, PriceListItem, PriceListHeading
@@ -28,6 +36,7 @@ from reportlab.platypus import (
 @never_cache
 @pricelist_required
 def price_categories(request):
+    """Landing page listing every price list category."""
     pages = PricePage.objects.all()
 
     return render(
@@ -43,6 +52,7 @@ def price_categories(request):
 @never_cache
 @pricelist_required
 def price_page(request, slug):
+    """Render a single price page with its items and headings in order."""
     page = get_object_or_404(
         PricePage.objects.prefetch_related(
             'items__product',
@@ -51,19 +61,7 @@ def price_page(request, slug):
         slug=slug
     )
 
-    entries = []
-
-    for item in page.items.all():
-        entries.append(
-            (item.display_order, "product", item)
-        )
-
-    for heading in page.headings.all():
-        entries.append(
-            (heading.display_order, "heading", heading)
-        )
-
-    entries.sort(key=lambda e: e[0])
+    entries = _page_entries(page)
 
     return render(
         request,
@@ -77,6 +75,7 @@ def price_page(request, slug):
 
 @staff_member_required
 def add_heading(request, page_id):
+    """Add a section heading to a price page."""
     page = get_object_or_404(
         PricePage,
         id=page_id
@@ -113,6 +112,7 @@ def add_heading(request, page_id):
 @login_required
 @staff_member_required
 def add_products(request, page_id):
+    """Search products and attach selected ones to a price page."""
     page = get_object_or_404(
         PricePage,
         id=page_id
@@ -138,6 +138,7 @@ def add_products(request, page_id):
                 item=product_id
             )
 
+            # get_or_create keeps repeated adds from duplicating entries.
             PriceListItem.objects.get_or_create(
                 page=page,
                 product=product
@@ -172,6 +173,7 @@ def add_products(request, page_id):
 
 @staff_member_required
 def add_category(request):
+    """Create a new price page/category."""
     if request.method == "POST":
         form = PricePageForm(request.POST)
 
@@ -198,6 +200,7 @@ def add_category(request):
 @never_cache
 @staff_member_required
 def price_manage(request):
+    """Management overview of pages with item and visibility totals."""
     pages = PricePage.objects.prefetch_related(
         'items'
     ).annotate(
@@ -248,6 +251,7 @@ def _page_entries(page):
 
 @staff_member_required
 def edit_page(request, page_id):
+    """Edit page contents: add products by search and reorder headings/items."""
     page = get_object_or_404(
         PricePage.objects.prefetch_related(
             'items__product',
@@ -315,11 +319,13 @@ def edit_page(request, page_id):
 @staff_member_required
 @require_POST
 def reorder_page(request, page_id):
+    """Persist the new drag-and-drop order of a page's items and headings."""
     page = get_object_or_404(
         PricePage,
         id=page_id
     )
 
+    # POST order entries are encoded as "kind:id", e.g. "product:12".
     order = request.POST.getlist('order')
 
     for position, entry in enumerate(order, start=1):
@@ -343,6 +349,7 @@ def reorder_page(request, page_id):
 @staff_member_required
 @require_POST
 def toggle_item(request, page_id):
+    """Toggle visibility of an item on a page (used by the manage UI)."""
     kind = request.POST.get('type')
     obj_id = request.POST.get('id')
     visible = request.POST.get('visible') == 'true'
@@ -359,6 +366,7 @@ def toggle_item(request, page_id):
 @staff_member_required
 @require_POST
 def remove_item(request, page_id):
+    """Remove an item or heading from a page."""
     kind = request.POST.get('type')
     obj_id = request.POST.get('id')
 
@@ -380,6 +388,7 @@ def remove_item(request, page_id):
 @staff_member_required
 @require_POST
 def reorder_categories(request):
+    """Persist the new drag-and-drop order of the category pages."""
     order = request.POST.getlist('order')
 
     for position, page_id in enumerate(order, start=1):
@@ -393,6 +402,7 @@ def reorder_categories(request):
 @staff_member_required
 @require_POST
 def rename_category(request):
+    """Rename a price page/category via the manage UI."""
     page_id = request.POST.get('id')
     name = (request.POST.get('name') or '').strip()
 
@@ -414,6 +424,7 @@ def rename_category(request):
 
 @pricelist_required
 def price_page_pdf(request, slug):
+    """Generate a printable PDF price list for a page, 1-3 newspaper columns."""
     page = get_object_or_404(
         PricePage.objects.prefetch_related(
             'items__product',
@@ -424,6 +435,7 @@ def price_page_pdf(request, slug):
 
     entries = _page_entries(page)
 
+    # Column count is user-tunable via ?cols=1|2|3 and clamped safely.
     try:
         cols = max(1, min(int(request.GET.get('cols', 1)), 3))
     except (TypeError, ValueError):

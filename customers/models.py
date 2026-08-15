@@ -67,6 +67,7 @@ def extract_description(item_text):
 
 
 class Customer(models.Model):
+    """A customer account with aggregate quantities, amounts and balance."""
     name = models.CharField(
         max_length=255,
         unique=True,
@@ -101,6 +102,7 @@ class Customer(models.Model):
 
 
 class Invoice(models.Model):
+    """An invoice issued to a customer, with per-item lines."""
     invoice_number = models.CharField(
         max_length=50,
         unique=True,
@@ -152,6 +154,7 @@ class Invoice(models.Model):
 
 
 class InvoiceItem(models.Model):
+    """A single line of an invoice (raw QuickBooks item + quantity/price)."""
     invoice = models.ForeignKey(
         Invoice,
         related_name="items",

@@ -5,6 +5,7 @@ from django.http import HttpResponse
 
 
 def service_worker(request):
+    """Serve the PWA service worker from the site root with scope allowed."""
     path = os.path.join(
         settings.BASE_DIR,
         "inventory",

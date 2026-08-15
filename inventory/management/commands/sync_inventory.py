@@ -4,9 +4,9 @@ from inventory.services.google_sync import sync_inventory
 
 
 class Command(BaseCommand):
+    """Run the full inventory sync pipeline from the Google Drive CSV."""
 
     help = "Synchronize inventory from CSV file"
-
 
     def handle(self, *args, **options):
 
@@ -14,11 +14,8 @@ class Command(BaseCommand):
             "Reading inventory CSV..."
         )
 
-
         try:
-
             result = sync_inventory()
-
 
             self.stdout.write(
                 self.style.SUCCESS(
@@ -26,7 +23,7 @@ class Command(BaseCommand):
                 )
             )
 
-
+            # Report per-operation counts from the sync result.
             self.stdout.write(
                 f"Added: {result['added']}"
             )

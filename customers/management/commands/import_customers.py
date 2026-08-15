@@ -4,6 +4,7 @@ from customers.services import import_customer_csv
 
 
 class Command(BaseCommand):
+    """Import customers, invoices and items from a QuickBooks customer CSV."""
 
     help = "Import customers, invoices and items from a QuickBooks customer CSV"
 
@@ -22,6 +23,7 @@ class Command(BaseCommand):
         except FileNotFoundError:
             raise CommandError(f"File not found: {filepath}")
 
+        # Report how many records were written per entity type.
         self.stdout.write(self.style.SUCCESS("Customer import completed."))
         self.stdout.write(f"Customers added: {result['customers']}")
         self.stdout.write(f"Invoices added: {result['invoices']}")

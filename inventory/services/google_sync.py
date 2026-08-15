@@ -1,3 +1,10 @@
+"""
+Inventory sync orchestration: download the sheet, parse it, sync products.
+
+The flow records each run in SyncHistory and stores the last sheet hash
+in SyncSetting so unchanged sheets are skipped.
+"""
+
 import os
 
 from django.utils import timezone
@@ -9,6 +16,7 @@ from inventory.models import SyncHistory, SyncSetting
 
 
 def _get_setting():
+    """Return the single SyncSetting row, creating it if missing."""
     setting = SyncSetting.objects.first()
     if setting is None:
         setting = SyncSetting.objects.create()
@@ -16,6 +24,13 @@ def _get_setting():
 
 
 def sync_inventory():
+    """
+    Download the inventory CSV and sync products into the database.
+
+    Returns a dict of counts (added/updated/restored/removed). Raises on
+    failure, leaving a FAILED SyncHistory row behind. The downloaded file
+    is always cleaned up.
+    """
     setting = _get_setting()
 
     download = download_inventory_csv()
@@ -33,6 +48,7 @@ def sync_inventory():
     try:
         file_hash = download["hash"]
 
+        # Skip parsing entirely when the sheet content has not changed.
         if setting.sheet_hash == file_hash:
             SyncHistory.objects.create(
                 status="SKIPPED",
@@ -54,6 +70,7 @@ def sync_inventory():
 
         result = sync_products(products)
 
+        # Record the new hash and summary counts on the setting row.
         setting.sheet_hash = file_hash
         setting.last_sync = timezone.now()
         setting.total_products = result["total_products"]
@@ -88,5 +105,6 @@ def sync_inventory():
         raise
 
     finally:
+        # Always remove the temporary CSV, even on failure.
         if os.path.exists(filepath):
             os.remove(filepath)

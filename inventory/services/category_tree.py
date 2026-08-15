@@ -1,7 +1,17 @@
+"""Build the category hierarchy tree shown on the inventory dashboard."""
+
 from inventory.models import Product
 
 
 def get_category_tree():
+    """
+    Group active products into a nested category/subcategory/level tree.
+
+    Returns a dict whose top-level keys are category names. Each node is a
+    dict with a "type" (category/subcategory/level3/level4) and a "children"
+    mapping, where "products" holds the list of products grouped at that
+    level.
+    """
     tree = {}
 
     products = Product.objects.filter(active=True).order_by(
@@ -27,6 +37,8 @@ def get_category_tree():
 
         current = cat["children"]
 
+        # Descend one level at a time, creating nodes only when the level
+        # actually has a value for this product.
         if subcategory:
             sub = current.setdefault(subcategory, {
                 "type": "subcategory",

@@ -6,6 +6,8 @@ from django.dispatch import receiver
 
 
 class UserProfile(models.Model):
+    """Extra per-user settings stored alongside the built-in auth User."""
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -19,4 +21,5 @@ class UserProfile(models.Model):
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
+    """Ensure every new (or saved) user always has a profile row."""
     UserProfile.objects.get_or_create(user=instance)

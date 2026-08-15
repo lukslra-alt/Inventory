@@ -43,6 +43,10 @@ def import_customer_csv(filepath):
     Parses a QuickBooks-style customer export CSV and upserts
     Customer, Invoice and InvoiceItem records.
 
+    The CSV is treated as the full source of truth: any customer in the
+    database that is not present in the file is hard-deleted together with
+    its invoices and line items.
+
     Expected row shapes:
         <Customer Name>,,,,,,,,                -> starts a customer block
         ,Invoice,<date>,<num>,<item>,<balance>,<qty>,<price>,<amount>,
@@ -52,10 +56,15 @@ def import_customer_csv(filepath):
         "customers": 0,
         "invoices": 0,
         "items": 0,
+        "deleted": 0,
     }
 
     current_customer = None
-    # invoice_number -> {customer, date, rows: [...]}
+    # Names of every customer block seen in the file. Used at the end to
+    # delete customers that no longer exist in the export.
+    seen_names = set()
+    # Buffer invoices per customer block; flushed when the next customer
+    # name appears or at EOF. invoice_number -> {customer, date, rows}.
     pending_invoices = {}
 
     with open(filepath, newline="", encoding="utf-8-sig") as handle:
@@ -63,6 +72,7 @@ def import_customer_csv(filepath):
         rows = list(reader)
 
     def flush():
+        """Commit all buffered invoices for the current customer block."""
         nonlocal pending_invoices
         for invoice_number, data in pending_invoices.items():
             invoice, created = Invoice.objects.update_or_create(
@@ -75,6 +85,7 @@ def import_customer_csv(filepath):
             if created:
                 result["invoices"] += 1
             else:
+                # Full replace: drop stale line items before re-importing.
                 invoice.items.all().delete()
 
             invoice_total = Decimal("0.00")
@@ -98,7 +109,8 @@ def import_customer_csv(filepath):
                 # Accumulate invoice item amounts.
                 invoice_total += amount
 
-                # Accumulate open balances for this invoice.
+                # Each line carries its own open-balance cell; sum them
+                # because QuickBooks does not provide a single total.
                 invoice_balance += open_balance
 
                 result["items"] += 1
@@ -119,7 +131,7 @@ def import_customer_csv(filepath):
         # Invoice row
         # ---------------------------------------------------------
         if not first:
-            # Blank line or header — check for an invoice line.
+            # Invoice rows have a blank col A and "Invoice" in col B.
             if (len(row) > 1 and row[1] and row[1].strip() == "Invoice"):
                 if current_customer is None:
                     continue
@@ -152,7 +164,8 @@ def import_customer_csv(filepath):
         # Customer total row
         # ---------------------------------------------------------
         if first.startswith("Total"):
-            # Update running totals on the customer.
+            # "Total <name>" row carries customer-level qty/amount/balance
+            # from the QuickBooks export (cols 5, 6, 8).
             if current_customer is not None:
                 current_customer.balance = _to_decimal(_cell(row, 5))
                 current_customer.total_qty = _to_decimal(_cell(row, 6))
@@ -167,6 +180,8 @@ def import_customer_csv(filepath):
         # Save all invoices belonging to the previous customer.
         flush()
 
+        seen_names.add(first)
+
         current_customer, created = Customer.objects.get_or_create(
             name=first,
             defaults={
@@ -179,5 +194,12 @@ def import_customer_csv(filepath):
             result["customers"] += 1
 
     flush()
+
+    # Remove customers absent from the export (cascades to their invoices
+    # and line items via the model's on_delete rules).
+    deleted_counts = Customer.objects.exclude(
+        name__in=seen_names
+    ).delete()
+    result["deleted"] = deleted_counts[1].get("customers.Customer", 0)
 
     return result

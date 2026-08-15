@@ -3,6 +3,7 @@ from inventory.models import Product
 
 
 class PricePage(models.Model):
+    """A price list category page with a printable name and slug."""
     name = models.CharField(
         max_length=100
     )
@@ -23,6 +24,7 @@ class PricePage(models.Model):
 
 
 class PriceListHeading(models.Model):
+    """A bold section heading shown between items on a price page."""
     page = models.ForeignKey(
         PricePage,
         on_delete=models.CASCADE,
@@ -45,6 +47,7 @@ class PriceListHeading(models.Model):
 
 
 class PriceListItem(models.Model):
+    """A product on a price page; visible controls PDF/HTML display."""
     page = models.ForeignKey(
         PricePage,
         on_delete=models.CASCADE,

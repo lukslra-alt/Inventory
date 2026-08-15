@@ -10,7 +10,9 @@ from .roles import admin_required
 
 @admin_required
 def user_list(request):
+    """Paginated directory of all users with pricelist access summary."""
     users = User.objects.all().order_by("username")
+    # Load pricelist access in one query and map it by user id.
     profile_map = {
         p.user_id: p.can_access_pricelist
         for p in UserProfile.objects.all()
@@ -38,6 +40,7 @@ def user_list(request):
 
 @admin_required
 def user_add(request):
+    """Create a new user via the user creation form."""
     if request.method == "POST":
         form = UserCreateForm(request.POST)
         if form.is_valid():
@@ -56,6 +59,7 @@ def user_add(request):
 
 @admin_required
 def user_edit(request, pk):
+    """Edit an existing user's details, role and pricelist access."""
     user = get_object_or_404(User, pk=pk)
     if request.method == "POST":
         form = UserEditForm(request.POST, instance=user)
@@ -75,6 +79,7 @@ def user_edit(request, pk):
 
 @admin_required
 def user_delete(request, pk):
+    """Delete a user, blocking the admin from removing their own account."""
     user = get_object_or_404(User, pk=pk)
     if user == request.user:
         messages.error(request, "You cannot delete your own account.")
@@ -93,6 +98,7 @@ def user_delete(request, pk):
 
 @admin_required
 def user_reset_password(request, pk):
+    """Reset a user's password to one provided via the form."""
     user = get_object_or_404(User, pk=pk)
     if request.method == "POST":
         form = PasswordResetForm(request.POST)

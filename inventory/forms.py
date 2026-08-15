@@ -3,6 +3,8 @@ from .models import Product
 
 
 class ProductAdminForm(forms.ModelForm):
+    """Admin form letting staff edit a product's price and reorder level."""
+
     class Meta:
         model = Product
 
@@ -30,7 +32,7 @@ class ProductAdminForm(forms.ModelForm):
         }
 
     def clean_sales_price(self):
-
+        # Reject negative prices before saving.
         value = self.cleaned_data["sales_price"]
 
         if value < 0:
@@ -41,7 +43,7 @@ class ProductAdminForm(forms.ModelForm):
         return value
 
     def clean_reorder_qty(self):
-
+        # Reject negative reorder quantities before saving.
         value = self.cleaned_data["reorder_qty"]
 
         if value < 0:

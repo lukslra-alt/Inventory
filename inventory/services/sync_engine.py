@@ -7,6 +7,14 @@ from inventory.models import Product
 
 @transaction.atomic
 def sync_products(products):
+    """
+    Upsert products from a parsed QuickBooks export.
+
+    - Sheet-controlled fields (category, qty, cost, etc.) are overwritten.
+    - sales_price and reorder_qty are local admin fields — never touched.
+    - Products missing from the sheet are soft-deleted (active=False).
+    - Products that reappear after soft-delete are restored (active=True).
+    """
 
     sheet_items = set()
 
@@ -63,7 +71,7 @@ def sync_products(products):
                     str(product_data["cost"])
                 ),
 
-                # LOCAL ADMIN VALUES
+                # Admin-only fields — defaults until set in the dashboard.
                 sales_price=Decimal("0.00"),
 
                 reorder_qty=Decimal("0.00"),
@@ -137,6 +145,7 @@ def sync_products(products):
         # RESTORE
         # =========================================
 
+        # Reappeared in sheet after a previous soft-delete.
         if not product.active:
 
             product.active = True
@@ -155,15 +164,11 @@ def sync_products(products):
 
             updated += 1
 
-    # =========================================
-    # REMOVE PRODUCTS NO LONGER IN SHEET
-    # =========================================
-
+    # Soft-delete: deactivate products absent from the sheet.
+    # Records are kept so admin pricing and history are preserved.
     removed = 0
 
-    for product in Product.objects.filter(
-        active=True
-    ):
+    for product in Product.objects.filter(active=True):
 
         if product.item not in sheet_items:
 
