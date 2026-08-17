@@ -19,7 +19,25 @@ function statusClass(status) {
     return "bg-success";
 }
 
-function renderSearchResults(products) {
+function buildProductRow(product, showCost, isAdmin) {
+    const id = product.id || product.item;
+    return `
+        <tr>
+            <td>${product.name || product.product_name}</td>
+            <td class="col-qty">${formatNumber(product.qty)}</td>
+            <td class="col-price">${formatNumber(product.price || product.sales_price, 2)}</td>
+            ${showCost ? `<td class="col-cost">${formatNumber(product.cost || '0.00', 2)}</td>` : ""}
+            ${isAdmin ? `
+                <td><span class="badge ${statusClass(product.status)}">${product.status}</span></td>
+                <td>
+                    <a href="/product/${id}/edit/" class="btn btn-sm btn-primary">Edit</a>
+                </td>
+            ` : ""}
+        </tr>
+    `;
+}
+
+function renderSearchResults(products, total, hasMore, replace) {
     const productList = document.getElementById("productList");
     const isAdmin = window.InventoryState ? window.InventoryState.isAdmin : false;
     const showCost = window.InventoryState ? window.InventoryState.showCost : false;
@@ -33,46 +51,48 @@ function renderSearchResults(products) {
         return;
     }
 
-    let html = `
-        <div class="table-responsive">
-            <table class="table table-striped table-hover align-middle">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Product</th>
-                        <th class="col-qty">Qty</th>
-                        <th class="col-price">Price</th>
-                        ${showCost ? "<th class=\"col-cost\">Cost</th>" : ""}
-                        ${isAdmin ? "<th>Status</th><th>Action</th>" : ""}
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-
+    let rows = "";
     products.forEach(product => {
-        const id = product.id || product.item;
-        html += `
-            <tr>
-                <td>${product.name || product.product_name}</td>
-                <td class="col-qty">${formatNumber(product.qty)}</td>
-                <td class="col-price">${formatNumber(product.price || product.sales_price, 2)}</td>
-                ${showCost ? `<td class="col-cost">${formatNumber(product.cost || '0.00', 2)}</td>` : ""}
-                ${isAdmin ? `
-                    <td><span class="badge ${statusClass(product.status)}">${product.status}</span></td>
-                    <td>
-                        <a href="/product/${id}/edit/" class="btn btn-sm btn-primary">Edit</a>
-                    </td>
-                ` : ""}
-            </tr>
-        `;
+        rows += buildProductRow(product, showCost, isAdmin);
     });
 
-    html += `
-                </tbody>
-            </table>
-        </div>
-    `;
+    if (replace) {
+        productList.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <small class="text-muted">${total} results</small>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Product</th>
+                            <th class="col-qty">Qty</th>
+                            <th class="col-price">Price</th>
+                            ${showCost ? "<th class=\"col-cost\">Cost</th>" : ""}
+                            ${isAdmin ? "<th>Status</th><th>Action</th>" : ""}
+                        </tr>
+                    </thead>
+                    <tbody id="searchBody">
+                        ${rows}
+                    </tbody>
+                </table>
+            </div>
+            <div id="loadMoreWrap" class="text-center my-3"></div>
+        `;
+    } else {
+        document.getElementById("searchBody").insertAdjacentHTML("beforeend", rows);
+    }
 
-    productList.innerHTML = html;
+    const loadMoreWrap = document.getElementById("loadMoreWrap");
+    if (hasMore) {
+        loadMoreWrap.innerHTML = `
+            <button id="loadMoreBtn" class="btn btn-outline-primary btn-sm">
+                Load more (${products.length} of ${total})
+            </button>
+        `;
+    } else {
+        loadMoreWrap.innerHTML = "";
+    }
 }
 
 function filterOfflineProducts(products, query, urlParams) {
@@ -102,19 +122,15 @@ function filterOfflineProducts(products, query, urlParams) {
 }
 
 function searchOffline(query, urlParams) {
-    // The service worker caches /offline-products/ (the full product list)
-    // whenever the dashboard loads online, so this fetch works while offline.
-    // Prefer it over IndexedDB since it does not depend on sync timing.
     fetch("/offline-products/")
         .then(function (response) {
             if (!response.ok) throw new Error("offline products fetch failed");
             return response.json();
         })
         .then(function (products) {
-            renderSearchResults(filterOfflineProducts(products || [], query, urlParams));
+            renderSearchResults(filterOfflineProducts(products || [], query, urlParams), 0, false, true);
         })
         .catch(function () {
-            // Fall back to the locally synced IndexedDB store
             if (!db) {
                 return;
             }
@@ -122,8 +138,35 @@ function searchOffline(query, urlParams) {
             const store = transaction.objectStore("products");
             store.getAll().onsuccess = function (event) {
                 const products = filterOfflineProducts(event.target.result || [], query, urlParams);
-                renderSearchResults(products);
+                renderSearchResults(products, 0, false, true);
             };
+        });
+}
+
+function buildSearchParams(query, urlParams, page) {
+    let params = new URLSearchParams();
+    params.append("q", query);
+    params.append("page", page || 1);
+    ["category", "subcategory", "level3", "level4"].forEach(field => {
+        if (urlParams.get(field)) {
+            params.append(field, urlParams.get(field));
+        }
+    });
+    return params;
+}
+
+function fetchSearchPage(params, append, callback) {
+    fetch("/search_products/?" + params.toString())
+        .then(response => {
+            if (!response.ok) throw new Error("Network response error");
+            return response.json();
+        })
+        .then(data => {
+            renderSearchResults(data.products, data.total, data.has_more, !append);
+            if (callback) callback(data);
+        })
+        .catch(error => {
+            console.error("Search API exception event:", error);
         });
 }
 
@@ -131,51 +174,55 @@ document.addEventListener("DOMContentLoaded", function () {
     const searchBox = document.getElementById("searchBox");
     const productList = document.getElementById("productList");
     let debounceTimer = null;
+    let currentQuery = "";
+    let currentUrlParams = null;
 
     if (searchBox && productList) {
         searchBox.addEventListener("input", function (e) {
             e.stopPropagation();
             let query = this.value.trim();
 
-            // Clear the previous execution window context to throttle calls
             clearTimeout(debounceTimer);
 
-            // Execute payload retrieval only after user activity idles
             debounceTimer = setTimeout(() => {
-                let urlParams = new URLSearchParams(window.location.search);
-                let params = new URLSearchParams();
-                params.append("q", query);
-                ["category", "subcategory", "level3", "level4"].forEach(field => {
-                    if (urlParams.get(field)) {
-                        params.append(field, urlParams.get(field));
-                    }
-                });
+                currentQuery = query;
+                currentUrlParams = new URLSearchParams(window.location.search);
 
-                // When offline, filter the locally synced product data
                 if (!navigator.onLine) {
-                    searchOffline(query, urlParams);
+                    searchOffline(query, currentUrlParams);
                     return;
                 }
 
-                // Targets the single dedicated JSON processing data API node
-                fetch("/search_products/?" + params.toString())
-                    .then(response => {
-                        if (!response.ok) throw new Error("Network response error");
-                        return response.json();
-                    })
-                    .then(data => {
-                        renderSearchResults(data.products);
-                    })
-                    .catch(error => {
-                        console.error("Search API exception event:", error);
-                        // Network failed (e.g. lost connection) - fall back to local data
-                        searchOffline(query, urlParams);
-                    });
-            }, 300); // 300 milliseconds delay window execution
+                const params = buildSearchParams(query, currentUrlParams, 1);
+                fetchSearchPage(params, false, function (data) {
+                    if (data.has_more) {
+                        setupLoadMore(1, data.total);
+                    }
+                });
+            }, 300);
         });
     }
 
-    // Programmatic mobile layout toggle safety check
+    function setupLoadMore(currentPage, total) {
+        const loadMoreWrap = document.getElementById("loadMoreWrap");
+        if (!loadMoreWrap) return;
+
+        loadMoreWrap.innerHTML = `
+            <button id="loadMoreBtn" class="btn btn-outline-primary btn-sm">
+                Load more
+            </button>
+        `;
+        document.getElementById("loadMoreBtn").addEventListener("click", function () {
+            const nextPage = currentPage + 1;
+            const params = buildSearchParams(currentQuery, currentUrlParams, nextPage);
+            this.disabled = true;
+            this.textContent = "Loading...";
+            fetchSearchPage(params, true, function (data) {
+                setupLoadMore(data.page, data.total);
+            });
+        });
+    }
+
     document.body.addEventListener("click", function (event) {
         if (event.target.classList.contains("category-tree-link")) {
             const offcanvasElement = document.getElementById("mobileCategories");

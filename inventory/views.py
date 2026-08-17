@@ -145,14 +145,19 @@ def search_products(request):
     subcategory = request.GET.get("subcategory", "")
     level3 = request.GET.get("level3", "")
     level4 = request.GET.get("level4", "")
+    page = max(1, int(request.GET.get("page", 1)))
+    per_page = 50
 
     products = apply_product_filters(
         products, search, category, subcategory, level3, level4
     ).order_by("product_name")
 
+    total = products.count()
+    start = (page - 1) * per_page
+    end = start + per_page
+
     data = []
-    # Bound return limit to 50 for rapid client-side DOM processing
-    for product in products[:50]:
+    for product in products[start:end]:
         entry = {
             "id": product.item,
             "name": product.product_name,
@@ -165,7 +170,13 @@ def search_products(request):
             entry["cost"] = str(product.cost)
         data.append(entry)
 
-    return JsonResponse({"products": data})
+    return JsonResponse({
+        "products": data,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "has_more": end < total,
+    })
 
 
 @staff_member_required
