@@ -6,7 +6,14 @@
 
 {% load humanize %}
 
-<h1>Customers</h1>
+<h1>Customers
+    {% if outstanding_json %}
+    <a href="{% url 'outstanding_pdf' %}" class="btn btn-sm btn-outline-success ms-2 wa-pdf-share"
+       data-pdf-url="{% url 'outstanding_pdf' %}">
+        <i class="bi bi-whatsapp"></i> Outstanding
+    </a>
+    {% endif %}
+</h1>
 
 <table class="table table-striped table-hover">
     <thead class="table-dark">
@@ -61,5 +68,32 @@
     </ul>
 </nav>
 {% endif %}
+
+<script>
+(function() {
+    document.querySelectorAll(".wa-pdf-share").forEach(function(btn) {
+        btn.addEventListener("click", function(e) {
+            e.preventDefault();
+            var url = this.dataset.pdfUrl;
+
+            if (navigator.share && navigator.canShare) {
+                fetch(url)
+                    .then(function(res) { return res.blob(); })
+                    .then(function(blob) {
+                        var file = new File([blob], "outstanding-summary.pdf",
+                                            { type: "application/pdf" });
+                        var data = { files: [file], title: "Outstanding Summary" };
+                        if (navigator.canShare(data)) {
+                            return navigator.share(data);
+                        }
+                        window.location.href = url;
+                    });
+            } else {
+                window.location.href = url;
+            }
+        });
+    });
+})();
+</script>
 
 {% endblock %}

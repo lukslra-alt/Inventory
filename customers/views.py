@@ -1,4 +1,5 @@
 import calendar
+import json
 from datetime import date
 
 from django.contrib.auth.decorators import login_required
@@ -9,7 +10,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
 from customers.models import Customer, Invoice
-from customers.pdf import invoice_pdf
+from customers.pdf import invoice_pdf, outstanding_summary_pdf
 
 
 def _months_ago(months):
@@ -51,10 +52,24 @@ def customer_list(request):
     paginator = Paginator(customers, 25)
     page_obj = paginator.get_page(request.GET.get("page"))
 
+    # Build outstanding summary for WhatsApp share (all customers, not just page).
+    outstanding = (
+        Customer.objects.filter(balance__gt=0)
+        .order_by("-balance")
+        .values_list("name", "balance")
+    )
+    total_outstanding = sum(bal for _, bal in outstanding)
+
     return render(
         request,
         "customers/customer_list.html",
-        {"page_obj": page_obj},
+        {
+            "page_obj": page_obj,
+            "outstanding_json": json.dumps(
+                [[name, str(bal)] for name, bal in outstanding]
+            ),
+            "total_outstanding": total_outstanding,
+        },
     )
 
 
@@ -96,5 +111,17 @@ def invoice_pdf_view(request, invoice_number):
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = (
         f'inline; filename="invoice-{invoice_number}.pdf"'
+    )
+    return response
+
+
+@login_required
+def outstanding_pdf_view(request):
+    """Stream the customer outstanding summary as a PDF."""
+    pdf = outstanding_summary_pdf()
+
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = (
+        'inline; filename="outstanding-summary.pdf"'
     )
     return response

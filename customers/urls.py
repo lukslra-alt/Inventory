@@ -27,4 +27,10 @@ urlpatterns = [
         name="invoice_pdf"
     ),
 
+    path(
+        "outstanding/pdf/",
+        views.outstanding_pdf_view,
+        name="outstanding_pdf"
+    ),
+
 ]

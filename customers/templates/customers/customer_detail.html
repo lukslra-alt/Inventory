@@ -48,6 +48,12 @@
                    onclick="return openPdf(this.href);">
                     PDF
                 </a>
+                <button type="button"
+                        class="btn btn-sm btn-outline-success wa-share"
+                        data-pdf-url="{% url 'invoice_pdf' invoice.invoice_number %}"
+                        data-invoice="{{ invoice.invoice_number }}">
+                    <i class="bi bi-whatsapp"></i>
+                </button>
             </td>
         </tr>
         {% empty %}
@@ -71,5 +77,30 @@
     </tfoot>
     {% endif %}
 </table>
+
+<script>
+document.querySelectorAll(".wa-share").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+        var url = this.dataset.pdfUrl;
+        var invoiceNo = this.dataset.invoice;
+
+        if (navigator.share && navigator.canShare) {
+            fetch(url)
+                .then(function(res) { return res.blob(); })
+                .then(function(blob) {
+                    var file = new File([blob], "invoice-" + invoiceNo + ".pdf",
+                                        { type: "application/pdf" });
+                    var data = { files: [file], title: "Invoice " + invoiceNo };
+                    if (navigator.canShare(data)) {
+                        return navigator.share(data);
+                    }
+                    window.location.href = url;
+                });
+        } else {
+            window.location.href = url;
+        }
+    });
+});
+</script>
 
 {% endblock %}
