@@ -149,10 +149,10 @@
 
     <!-- CATEGORY ICONS (collapsible) -->
     <div class="mb-3">
-        <button class="btn btn-sm btn-outline-secondary mb-2" type="button" id="categoryToggle" onclick="toggleCategories()" aria-expanded="true" aria-controls="categoryPanel">
-            <span id="categoryChevron">&#9662;</span> Categories
+        <button class="btn btn-sm btn-outline-secondary mb-2" type="button" id="categoryToggle" onclick="toggleCategories()" aria-expanded="false" aria-controls="categoryPanel">
+            <span id="categoryChevron">&#9656;</span> Categories
         </button>
-        <div id="categoryPanel">
+        <div id="categoryPanel" class="d-none">
             <div class="d-flex flex-wrap gap-2 category-icons">
                 <a href="{% url 'dashboard' %}" class="category-icon {% if not category %}active{% endif %}">
                     <span class="label">All</span>
