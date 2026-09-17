@@ -24,4 +24,10 @@ def service_worker(request):
     # Allow the worker (served from the site root) to control "/"
     response["Service-Worker-Allowed"] = "/"
 
+    # iOS Safari aggressively caches HTTP responses. Without these headers it
+    # may serve a stale service worker and never see updates.
+    response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+
     return response

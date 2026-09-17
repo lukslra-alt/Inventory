@@ -1,6 +1,7 @@
-const CACHE_NAME = "inventorypro-v23"; // Bumped version structure layer
+const CACHE_NAME = "inventorypro-v24";
+const OFFLINE_FALLBACK = "/static/offline.html";
 const FILES_TO_CACHE = [
-    "/",
+    "/static/offline.html",
     "/static/inventory/css/bootstrap.min.css",
     "/static/inventory/css/bootstrap-icons.min.css",
     "/static/inventory/css/fonts/bootstrap-icons.woff",
@@ -17,9 +18,20 @@ const FILES_TO_CACHE = [
 
 self.addEventListener("install", event => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then(cache => cache.addAll(FILES_TO_CACHE))
+        caches.open(CACHE_NAME).then(cache =>
+            Promise.all(
+                FILES_TO_CACHE.map(url =>
+                    fetch(url, { credentials: "same-origin" })
+                        .then(resp => {
+                            if (resp && resp.status === 200) {
+                                return cache.put(url, resp);
+                            }
+                        })
+                        .catch(() => {})
+                )
+            ).then(() => self.skipWaiting())
+        )
     );
-    self.skipWaiting();
 });
 
 self.addEventListener("activate", event => {
@@ -28,32 +40,39 @@ self.addEventListener("activate", event => {
             keys.map(key => {
                 if (key !== CACHE_NAME) return caches.delete(key);
             })
-        ))
+        )).then(() => self.clients.claim())
     );
-    self.clients.claim();
 });
 
 self.addEventListener("fetch", event => {
     const url = new URL(event.request.url);
 
-    // 1. BYPASS RULE: External resource handling execution safety block
     if (url.hostname.includes("cdn.jsdelivr.net") || !url.origin.includes(self.location.hostname)) {
         return;
     }
 
-    // 2. BYPASS RULE: Dynamic search matching prevents worker interception duplication
-    if (url.pathname.includes("search")) {
-        return;
-    }
-
-    // 3. Only intercept and cache GET requests
     if (event.request.method !== "GET") {
         return;
     }
 
-    // 4. PAGES: network-first so online always shows fresh HTML (fixes stale
-    //    cached pages persisting on the phone). Cache is only an offline fallback.
-    if (event.request.mode === "navigate" || url.pathname === "/offline-products/") {
+    // API data: network-first, cache the response for offline use
+    if (url.pathname === "/offline-products/") {
+        event.respondWith(
+            fetch(event.request)
+                .then(response => {
+                    if (response && response.status === 200) {
+                        const copy = response.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+                    }
+                    return response;
+                })
+                .catch(() => caches.match(event.request))
+        );
+        return;
+    }
+
+    // Pages: network-first, fall back to offline page
+    if (event.request.mode === "navigate") {
         event.respondWith(
             fetch(event.request)
                 .then(response => {
@@ -64,13 +83,15 @@ self.addEventListener("fetch", event => {
                     return response;
                 })
                 .catch(() =>
-                    caches.match(event.request).then(cached => cached || caches.match("/"))
+                    caches.match(event.request).then(cached =>
+                        cached || caches.match(OFFLINE_FALLBACK)
+                    )
                 )
         );
         return;
     }
 
-    // 5. STATIC ASSETS: serve from cache first, refresh in the background.
+    // Static assets: cache-first, refresh in background
     event.respondWith(
         caches.match(event.request).then(cachedResponse => {
             const network = fetch(event.request)

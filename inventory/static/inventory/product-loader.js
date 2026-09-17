@@ -177,10 +177,19 @@ function setStockFilter(value) {
 }
 
 function loadProducts() {
-    loadOfflineProducts();
-    if (navigator.onLine) {
-        syncProducts();
+    // Avoid the race where IndexedDB is still opening on a slow/fresh start.
+    // Wait for the DB, then render cached products; refresh from network if online.
+    function attempt() {
+        if (typeof dbReady !== "undefined" && !dbReady) {
+            setTimeout(attempt, 100);
+            return;
+        }
+        loadOfflineProducts();
+        if (navigator.onLine) {
+            syncProducts();
+        }
     }
+    attempt();
 }
 
 function loadOfflineProducts() {

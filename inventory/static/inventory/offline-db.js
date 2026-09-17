@@ -1,4 +1,5 @@
 let db;
+let dbReady = false;
 
 const request = indexedDB.open(
     "InventoryPro",
@@ -22,7 +23,11 @@ request.onupgradeneeded = function(event){
 request.onsuccess=function(event){
 
     db = event.target.result;
+    dbReady = true;
 
+    // Show whatever is already stored immediately (works offline), then
+    // refresh from the network in the background when possible.
+    loadOfflineProducts();
     syncProducts();
 
 };
@@ -69,7 +74,9 @@ products.forEach(product=>{
 });
 
 
-displayProducts(products);
+if (typeof displayProducts === "function") {
+    displayProducts(products);
+}
 
 
 localStorage.setItem(
@@ -83,6 +90,32 @@ new Date().toLocaleString()
     console.error("Offline products sync failed:", error);
 });
 
+}
+
+function loadOfflineProducts() {
+
+    if (!db) {
+        return;
+    }
+
+    let transaction =
+    db.transaction(
+        "products",
+        "readonly"
+    );
+
+    let store =
+    transaction.objectStore(
+        "products"
+    );
+
+    store.getAll().onsuccess =
+    function (event) {
+        let products = event.target.result;
+        if (products && products.length && typeof displayProducts === "function") {
+            displayProducts(products);
+        }
+    };
 }
 
 window.addEventListener(

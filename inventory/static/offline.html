@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Offline - InventoryPro</title>
+    <link rel="icon" type="image/x-icon" href="/static/icons/favicon.ico">
+    <link href="/static/inventory/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/inventory/css/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #2B2B2B;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .offline-card {
+            text-align: center;
+            padding: 2rem;
+            background: #3a3a3a;
+            border-radius: 1rem;
+            max-width: 320px;
+            width: 90%;
+        }
+        .offline-card i {
+            font-size: 4rem;
+            color: #F57C00;
+        }
+        .btn-reload {
+            background: #F57C00;
+            color: #fff;
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.6rem 1.5rem;
+            font-weight: 600;
+            width: 100%;
+        }
+        .btn-reload:hover {
+            background: #e56c00;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-card">
+        <i class="bi bi-wifi-off"></i>
+        <h4 class="mt-3 mb-2">You're offline</h4>
+        <p class="text-white-50 mb-4">
+            Check your connection and try again. Cached data is still available if it was loaded before.
+        </p>
+        <button type="button" class="btn-reload" onclick="location.reload()">
+            Retry
+        </button>
+    </div>
+</body>
+</html>
