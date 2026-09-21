@@ -69,6 +69,12 @@ class PriceListItem(models.Model):
 
     class Meta:
         ordering = ["display_order"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["page", "product"],
+                name="unique_product_per_page",
+            )
+        ]
 
     def __str__(self):
         return self.product.product_name

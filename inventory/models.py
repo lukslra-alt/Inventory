@@ -139,6 +139,25 @@ class Product(models.Model):
             models.Index(fields=["status"]),
         ]
 
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(qty__gte=0),
+                name="product_qty_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(cost__gte=0),
+                name="product_cost_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(sales_price__gte=0),
+                name="product_sales_price_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(reorder_qty__gte=0),
+                name="product_reorder_qty_non_negative",
+            ),
+        ]
+
     def __str__(self):
         return self.product_name
 

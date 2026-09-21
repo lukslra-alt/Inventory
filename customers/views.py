@@ -1,37 +1,18 @@
-import calendar
 import json
-from datetime import date
 
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Count, Min
+from django.db.models import Count, Min, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
-from django.utils import timezone
 
 from customers.models import Customer, Invoice
 from customers.pdf import invoice_pdf, outstanding_summary_pdf
 
 
-def _months_ago(months):
-    """Return today's date shifted back by the given number of months."""
-    today = timezone.now().date()
-    month = today.month - months
-    year = today.year
-    if month <= 0:
-        month += 12
-        year -= 1
-    # Clamp the day in case the target month is shorter than today's day.
-    day = min(today.day, calendar.monthrange(year, month)[1])
-    return date(year, month, day)
-
-
 @login_required
 def customer_list(request):
     """Paginated customer directory with invoice counts and due status."""
-    cutoff_3 = _months_ago(3)
-    cutoff_6 = _months_ago(6)
-
     customers = (
         Customer.objects.annotate(
             invoice_count=Count("invoices"),
@@ -40,31 +21,32 @@ def customer_list(request):
         .order_by("name")
     )
 
-    # Label customers based on how old their oldest invoice is.
-    for customer in customers:
-        if customer.oldest_invoice and customer.oldest_invoice < cutoff_6:
-            customer.due_status = "overdue"
-        elif customer.oldest_invoice and customer.oldest_invoice < cutoff_3:
-            customer.due_status = "due"
-        else:
-            customer.due_status = ""
-
+    # The due_status property classifies each customer from the
+    # oldest_invoice annotation computed above.
     paginator = Paginator(customers, 25)
     page_obj = paginator.get_page(request.GET.get("page"))
 
+    # Pagination links with ellipses instead of every page number.
+    page_range = page_obj.paginator.get_elided_page_range(page_obj.number)
+
     # Build outstanding summary for WhatsApp share (all customers, not just page).
-    outstanding = (
+    outstanding = list(
         Customer.objects.filter(balance__gt=0)
         .order_by("-balance")
         .values_list("name", "balance")
     )
-    total_outstanding = sum(bal for _, bal in outstanding)
+    total_outstanding = (
+        Customer.objects.filter(balance__gt=0)
+        .aggregate(total=Sum("balance"))["total"]
+        or 0
+    )
 
     return render(
         request,
         "customers/customer_list.html",
         {
             "page_obj": page_obj,
+            "page_range": page_range,
             "outstanding_json": json.dumps(
                 [[name, str(bal)] for name, bal in outstanding]
             ),
@@ -104,9 +86,12 @@ def invoice_view(request, invoice_number):
 @login_required
 def invoice_pdf_view(request, invoice_number):
     """Stream a rendered invoice PDF for inline browser display."""
-    get_object_or_404(Invoice, invoice_number=invoice_number)
+    invoice = get_object_or_404(
+        Invoice.objects.prefetch_related("items").select_related("customer"),
+        invoice_number=invoice_number,
+    )
 
-    pdf = invoice_pdf(invoice_number)
+    pdf = invoice_pdf(invoice)
 
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = (

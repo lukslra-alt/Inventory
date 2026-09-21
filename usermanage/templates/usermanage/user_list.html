@@ -50,7 +50,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for row in page_obj %}
+            {% for row in rows %}
             {% with user=row.user %}
             <tr>
                 <td>{{ user.username }}</td>

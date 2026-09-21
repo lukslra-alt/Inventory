@@ -3,6 +3,7 @@ from datetime import date
 from pathlib import Path
 
 from django.conf import settings
+from django.db.models import Sum
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
@@ -18,7 +19,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from customers.models import Invoice, Customer
+from customers.models import Customer
 
 
 def _logo_path():
@@ -60,17 +61,13 @@ def _quantity(value):
         return "0"
 
 
-def invoice_pdf(invoice_number):
+def invoice_pdf(invoice):
     """
-    Build an invoice PDF as bytes for the given invoice number.
-    """
-    invoice = (
-        Invoice.objects
-        .prefetch_related("items")
-        .select_related("customer")
-        .get(invoice_number=invoice_number)
-    )
+    Build an invoice PDF as bytes for the given Invoice instance.
 
+    The caller is expected to prefetch ``items`` and select_related
+    ``customer`` so the rendered document does not fire extra queries.
+    """
     # =========================================================
     # STYLES
     # =========================================================
@@ -585,7 +582,10 @@ def outstanding_summary_pdf():
         .order_by("-balance")
     )
 
-    total_outstanding = sum(c.balance for c in customers)
+    total_outstanding = (
+        customers.aggregate(total=Sum("balance"))["total"]
+        or 0
+    )
 
     styles = getSampleStyleSheet()
 

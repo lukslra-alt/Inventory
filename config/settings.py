@@ -13,22 +13,35 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 import os
 
+from django.core.exceptions import ImproperlyConfigured
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get(
-    'DJANGO_SECRET_KEY',
-    'django-insecure-6=wz%g0(+5&k469-)j7)8p@unv_7pq-h6^!2n=cb1xi6_z0+s#'
-)
-
 # SECURITY WARNING: don't run with debug turned on in production!
+# Local development stays convenient; set DJANGO_DEBUG=false for production.
 DEBUG = os.environ.get('DJANGO_DEBUG', 'true').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = ['waseerdambulla.pythonanywhere.com', '127.0.0.1:8000', '127.0.0.1']
+# SECURITY WARNING: keep the secret key used in production secret!
+# Local development falls back to a throwaway key; production must supply
+# DJANGO_SECRET_KEY in the environment.
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = 'django-insecure-dev-only-do-not-use-in-production'
+    else:
+        raise ImproperlyConfigured(
+            'DJANGO_SECRET_KEY environment variable must be set when DEBUG is off.'
+        )
+
+ALLOWED_HOSTS = [
+    'waseerdambulla.pythonanywhere.com',
+    '127.0.0.1',
+    'localhost',
+]
 
 # Application definition
 
@@ -160,5 +173,10 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
     CSRF_COOKIE_SECURE = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = 'same-origin'
+    # PythonAnywhere terminates TLS at the proxy and sets X-Forwarded-Proto,
+    # so request.is_secure() must honor that header for SECURE_SSL_REDIRECT.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

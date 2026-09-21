@@ -144,7 +144,7 @@
 
     <!-- SEARCH INPUT (on top) -->
     <div class="mb-3">
-        <label for="searchBox"></label><input type="text" id="searchBox" class="form-control" placeholder="Search products..." autocomplete="off">
+        <label for="searchBox" class="visually-hidden">Search products</label><input type="text" id="searchBox" class="form-control" placeholder="Search products..." autocomplete="off">
     </div>
 
     <!-- CATEGORY ICONS (collapsible) -->
@@ -243,9 +243,13 @@
                     </li>
                     {% endif %}
 
-                    {% for num in page_obj.paginator.page_range %}
+                    {% for num in page_range %}
                     <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                        {% if num == page_obj.paginator.ELLIPSIS %}
+                        <span class="page-link">…</span>
+                        {% else %}
                         <a class="page-link" href="?{{ query_string }}&page={{ num }}">{{ num }}</a>
+                        {% endif %}
                     </li>
                     {% endfor %}
 
@@ -265,7 +269,14 @@
 <script>
     window.InventoryState = {
         isAdmin: {{ is_admin | yesno:"true,false" }},
-        showCost: {{ show_cost | yesno:"true,false" }}
+        showCost: {{ show_cost | yesno:"true,false" }},
+        urls: {
+            search: "{% url 'search_products' %}",
+            offline: "{% url 'offline_products' %}",
+            // '__PRODUCT__' is a placeholder replaced client-side with the
+            // real item id (which may contain slashes, hence <path:pk>).
+            productEdit: "{% url 'product_edit' '__PRODUCT__' %}"
+        }
     };
 
     function toggleCategories() {
@@ -279,6 +290,4 @@
     }
 </script>
 
-<!-- Load External Logic Engine Core Dependencies -->
-<script src="{% static 'inventory/js/search.js' %}"></script>
 {% endblock %}

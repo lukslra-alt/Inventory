@@ -4,42 +4,24 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.management import call_command
 from django.core.paginator import Paginator
-from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
+from django.views.decorators.http import require_POST
 
 from .models import Product, SyncSetting, SyncHistory
 from .forms import ProductAdminForm
 from inventory.services.category_tree import get_category_tree
+from inventory.view_helpers import (
+    apply_product_filters,
+    can_view_cost,
+    get_product_filters,
+    product_json,
+    safe_page_number,
+    safe_per_page,
+    stock_summary,
+)
 from usermanage.roles import admin_required
-
-
-def apply_product_filters(products, search="", category="", subcategory="", level3="", level4=""):
-    """
-    Apply dashboard search and category-level filters to a Product queryset.
-
-    The search text is matched against the product name and every level of
-    the category hierarchy; the remaining arguments narrow by exact value.
-    """
-    if search:
-        products = products.filter(
-            Q(product_name__icontains=search) |
-            Q(category__icontains=search) |
-            Q(subcategory__icontains=search) |
-            Q(level3__icontains=search) |
-            Q(level4__icontains=search) |
-            Q(hierarchy_path__icontains=search)
-        )
-    if category:
-        products = products.filter(category=category)
-    if subcategory:
-        products = products.filter(subcategory=subcategory)
-    if level3:
-        products = products.filter(level3=level3)
-    if level4:
-        products = products.filter(level4=level4)
-    return products
 
 
 def count_tree_products(node):
@@ -62,12 +44,19 @@ def dashboard(request):
     if not request.user.is_staff:
         return redirect("customer_list")
 
-    products = Product.objects.filter(active=True)
-    search = request.GET.get("search", "").strip()
-    category = request.GET.get("category", "")
-    subcategory = request.GET.get("subcategory", "")
-    level3 = request.GET.get("level3", "")
-    level4 = request.GET.get("level4", "")
+    products = Product.objects.filter(active=True).only(
+        "product_name",
+        "qty",
+        "sales_price",
+        "cost",
+        "status",
+    )
+    filters = get_product_filters(request)
+    search = filters["search"]
+    category = filters["category"]
+    subcategory = filters["subcategory"]
+    level3 = filters["level3"]
+    level4 = filters["level4"]
 
     products = apply_product_filters(
         products, search, category, subcategory, level3, level4
@@ -107,9 +96,14 @@ def dashboard(request):
             if sub_node.get("type") == "subcategory" and count_tree_products(sub_node) > 1:
                 subcategory_icons.append(sub_key)
 
+    # All three stock counters come from a single aggregate query.
+    counts = stock_summary()
+    page_range = page_obj.paginator.get_elided_page_range(page_obj.number)
+
     context = {
         "products": page_obj,
         "page_obj": page_obj,
+        "page_range": page_range,
         "category": category,
         "subcategory": subcategory,
         "level3": level3,
@@ -118,15 +112,13 @@ def dashboard(request):
         "category_icons": category_icons,
         "subcategory_icons": subcategory_icons,
         "search": search,
-        "total_products": Product.objects.filter(active=True).count(),
-        "low_stock": Product.objects.filter(active=True, status="LOW").count(),
-        "nil_stock": Product.objects.filter(active=True, status="NIL").count(),
-        "reorder_count": Product.objects.filter(
-            active=True, status__in=["LOW", "NIL"]
-        ).count(),
+        "total_products": counts["total"],
+        "low_stock": counts["low"],
+        "nil_stock": counts["nil"],
+        "reorder_count": counts["low"] + counts["nil"],
         "sync_setting": SyncSetting.objects.first(),
-        "show_cost": request.user.is_staff or request.user.is_superuser,
-        "is_admin": request.user.is_staff or request.user.is_superuser,
+        "show_cost": can_view_cost(request.user),
+        "is_admin": can_view_cost(request.user),
         "query_string": query_string,
     }
     return render(request, "inventory/dashboard.html", context)
@@ -137,16 +129,22 @@ def search_products(request):
     """
     Unified asynchronous clean JSON API reflecting exact dashboard filters.
     """
-    products = Product.objects.filter(active=True)
-
-    # Read both 'search' and 'q' to handle any variations across frontend scripts smoothly
-    search = request.GET.get("search", request.GET.get("q", "")).strip()
-    category = request.GET.get("category", "")
-    subcategory = request.GET.get("subcategory", "")
-    level3 = request.GET.get("level3", "")
-    level4 = request.GET.get("level4", "")
-    page = max(1, int(request.GET.get("page", 1)))
-    per_page = 50
+    products = Product.objects.filter(active=True).only(
+        "product_name",
+        "qty",
+        "sales_price",
+        "status",
+        "reorder_qty",
+        "cost",
+    )
+    filters = get_product_filters(request)
+    search = filters["search"]
+    category = filters["category"]
+    subcategory = filters["subcategory"]
+    level3 = filters["level3"]
+    level4 = filters["level4"]
+    page = safe_page_number(request.GET.get("page", 1))
+    per_page = safe_per_page(request.GET.get("per_page"))
 
     products = apply_product_filters(
         products, search, category, subcategory, level3, level4
@@ -156,18 +154,10 @@ def search_products(request):
     start = (page - 1) * per_page
     end = start + per_page
 
+    include_cost = can_view_cost(request.user)
     data = []
     for product in products[start:end]:
-        entry = {
-            "id": product.item,
-            "name": product.product_name,
-            "qty": product.qty,
-            "price": str(product.sales_price),
-            "status": product.status,
-            "reorder_qty": str(product.reorder_qty),
-        }
-        if (request.user.is_staff or request.user.is_superuser) and hasattr(product, "cost"):
-            entry["cost"] = str(product.cost)
+        entry = product_json(product, include_cost=include_cost)
         data.append(entry)
 
     return JsonResponse({
@@ -186,10 +176,9 @@ def product_edit(request, pk):
     if request.method == "POST":
         form = ProductAdminForm(request.POST, instance=product)
         if form.is_valid():
+            # Product.save() already rebuilds the hierarchy path and
+            # recomputes the LOW/NIL stock status, so a single save is enough.
             form.save()
-            # Recompute LOW/NIL stock status after the edit.
-            product.calculate_status()
-            product.save()
             messages.success(request, "Product updated successfully.")
             return redirect("dashboard")
     else:
@@ -203,6 +192,7 @@ def product_edit(request, pk):
 
 
 @admin_required
+@require_POST
 def manual_sync(request):
     """Run both inventory and customer sync commands in one request."""
     try:
@@ -230,6 +220,7 @@ def sync_page(request):
 
 
 @admin_required
+@require_POST
 def sync_products(request):
     """Trigger the product sync command and report the outcome."""
     try:
@@ -241,6 +232,7 @@ def sync_products(request):
 
 
 @admin_required
+@require_POST
 def sync_customers(request):
     """Trigger the customer sync command and report the outcome."""
     try:

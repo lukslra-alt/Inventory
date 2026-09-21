@@ -1,6 +1,16 @@
 let productSort = { field: "product_name", dir: "asc" };
 let productStockFilter = "all";
 
+function escapeHTML(value) {
+    const text = (value === null || value === undefined) ? "" : String(value);
+    return text
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
 function statusClass(status) {
     if (status === "NIL") return "bg-danger";
     if (status === "LOW") return "bg-warning text-dark";
@@ -91,9 +101,13 @@ function formatNumber(value, decimals) {
 function displayProducts(products) {
     const productList = document.getElementById("productList");
 
-    if (!productList || !Array.isArray(products)) {
+    if (!productList) {
         return;
     }
+
+    const editUrl = (typeof productEditUrl === "function")
+        ? productEditUrl
+        : function (id) { return "/product/" + encodeURIComponent(id) + "/edit/"; };
 
     // Keep the raw list so sorting/filtering can re-render without refetching.
     window.lastProductList = products;
@@ -128,7 +142,9 @@ function displayProducts(products) {
     `;
 
     products.forEach(product => {
-        const name = product.product_name || product.name || "";
+        const itemId = product.item || product.id || "";
+        const name = escapeHTML(product.product_name || product.name || "");
+        const status = escapeHTML(product.status || "OK");
         const statusCls = statusClass(product.status);
         html += `
             <tr>
@@ -137,9 +153,9 @@ function displayProducts(products) {
                 <td class="col-price">${formatNumber(product.sales_price || product.price || "0.00", 2)}</td>
                 ${showCost ? `<td class="col-cost">${formatNumber(product.cost || "0.00", 2)}</td>` : ""}
                 ${isAdmin ? `
-                    <td class="col-status"><span class="badge ${statusCls}">${product.status || "OK"}</span></td>
+                    <td class="col-status"><span class="badge ${statusCls}">${status}</span></td>
                     <td class="col-action">
-                        <a href="/product/${product.item || product.id}/edit/" class="btn btn-sm btn-primary">Edit</a>
+                        <a href="${editUrl(itemId)}" class="btn btn-sm btn-primary">Edit</a>
                     </td>
                 ` : ""}
             </tr>

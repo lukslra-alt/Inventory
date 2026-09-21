@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.db import transaction
+from django.utils import timezone
 
 from inventory.models import Product
 
@@ -166,17 +167,12 @@ def sync_products(products):
 
     # Soft-delete: deactivate products absent from the sheet.
     # Records are kept so admin pricing and history are preserved.
-    removed = 0
-
-    for product in Product.objects.filter(active=True):
-
-        if product.item not in sheet_items:
-
-            product.active = False
-
-            product.save()
-
-            removed += 1
+    removed = (
+        Product.objects
+        .filter(active=True)
+        .exclude(item__in=sheet_items)
+        .update(active=False, updated_at=timezone.now())
+    )
 
     # =========================================
     # RETURN RESULT

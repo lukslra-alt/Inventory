@@ -1,4 +1,27 @@
 // Safeguard lifecycle orchestration layout
+function escapeHTML(value) {
+    const text = (value === null || value === undefined) ? "" : String(value);
+    return text
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+function appEndpoints() {
+    const state = window.InventoryState || {};
+    return state.urls || {};
+}
+
+function productEditUrl(id) {
+    const template = appEndpoints().productEdit;
+    if (template) {
+        return template.replace("__PRODUCT__", encodeURIComponent(id));
+    }
+    return "/product/" + encodeURIComponent(id) + "/edit/";
+}
+
 function formatNumber(value, decimals) {
     if (value === null || value === undefined || value === "") {
         return (decimals === undefined) ? "0" : "0.00";
@@ -21,16 +44,17 @@ function statusClass(status) {
 
 function buildProductRow(product, showCost, isAdmin) {
     const id = product.id || product.item;
+    const name = escapeHTML(product.name || product.product_name);
     return `
         <tr>
-            <td>${product.name || product.product_name}</td>
+            <td title="${name}">${name}</td>
             <td class="col-qty">${formatNumber(product.qty)}</td>
             <td class="col-price">${formatNumber(product.price || product.sales_price, 2)}</td>
             ${showCost ? `<td class="col-cost">${formatNumber(product.cost || '0.00', 2)}</td>` : ""}
             ${isAdmin ? `
-                <td><span class="badge ${statusClass(product.status)}">${product.status}</span></td>
+                <td><span class="badge ${statusClass(product.status)}">${escapeHTML(product.status)}</span></td>
                 <td>
-                    <a href="/product/${id}/edit/" class="btn btn-sm btn-primary">Edit</a>
+                    <a href="${productEditUrl(id)}" class="btn btn-sm btn-primary">Edit</a>
                 </td>
             ` : ""}
         </tr>
@@ -121,8 +145,16 @@ function filterOfflineProducts(products, query, urlParams) {
     });
 }
 
+function offlineProductsUrl() {
+    return appEndpoints().offline || "/offline-products/";
+}
+
+function searchProductsUrl() {
+    return appEndpoints().search || "/search_products/";
+}
+
 function searchOffline(query, urlParams) {
-    fetch("/offline-products/")
+    fetch(offlineProductsUrl())
         .then(function (response) {
             if (!response.ok) throw new Error("offline products fetch failed");
             return response.json();
@@ -156,7 +188,7 @@ function buildSearchParams(query, urlParams, page) {
 }
 
 function fetchSearchPage(params, append, callback) {
-    fetch("/search_products/?" + params.toString())
+    fetch(searchProductsUrl() + "?" + params.toString())
         .then(response => {
             if (!response.ok) throw new Error("Network response error");
             return response.json();

@@ -11,7 +11,10 @@ from .roles import admin_required
 @admin_required
 def user_list(request):
     """Paginated directory of all users with pricelist access summary."""
-    users = User.objects.all().order_by("username")
+    # Paginate the queryset itself, never a materialized list.
+    paginator = Paginator(User.objects.all().order_by("username"), 50)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
     # Load pricelist access in one query and map it by user id.
     profile_map = {
         p.user_id: p.can_access_pricelist
@@ -22,15 +25,15 @@ def user_list(request):
             "user": user,
             "pricelist_access": profile_map.get(user.pk, False),
         }
-        for user in users
+        for user in page_obj.object_list
     ]
-    paginator = Paginator(rows, 50)
-    page_obj = paginator.get_page(request.GET.get("page"))
+
     return render(
         request,
         "usermanage/user_list.html",
         {
             "page_obj": page_obj,
+            "rows": rows,
             "total_users": User.objects.count(),
             "staff_users": User.objects.filter(is_staff=True).count(),
             "active_users": User.objects.filter(is_active=True).count(),

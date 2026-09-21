@@ -14,7 +14,14 @@ def get_category_tree():
     """
     tree = {}
 
-    products = Product.objects.filter(active=True).order_by(
+    products = Product.objects.filter(active=True).only(
+        "item",
+        "product_name",
+        "category",
+        "subcategory",
+        "level3",
+        "level4",
+    ).order_by(
         "category",
         "subcategory",
         "level3",

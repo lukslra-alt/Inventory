@@ -1,5 +1,8 @@
 from django.db import models
+from django.utils import timezone
 from decimal import Decimal
+import calendar
+from datetime import date
 
 
 def extract_description(item_text):
@@ -99,6 +102,37 @@ class Customer(models.Model):
 
     def __str__(self):
         return self.name
+
+    @staticmethod
+    def _months_ago(months):
+        """Return today's date shifted back by the given number of months."""
+        today = timezone.now().date()
+        month = today.month - months
+        year = today.year
+        if month <= 0:
+            month += 12
+            year -= 1
+        # Clamp the day in case the target month is shorter than today's day.
+        day = min(today.day, calendar.monthrange(year, month)[1])
+        return date(year, month, day)
+
+    @property
+    def due_status(self):
+        """
+        Classify the customer's payment status as "overdue", "due" or "".
+
+        Based on the age of the customer's oldest invoice. The date is
+        expected to come from the ``oldest_invoice`` annotation used by the
+        customer list view; customers without invoices classify as "".
+        """
+        oldest = getattr(self, "oldest_invoice", None)
+        if oldest is None:
+            return ""
+        if oldest < self._months_ago(6):
+            return "overdue"
+        if oldest < self._months_ago(3):
+            return "due"
+        return ""
 
 
 class Invoice(models.Model):
