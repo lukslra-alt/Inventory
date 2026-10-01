@@ -57,6 +57,7 @@ def import_customer_csv(filepath):
         "invoices": 0,
         "items": 0,
         "deleted": 0,
+        "deleted_invoices": 0,
     }
 
     current_customer = None
@@ -74,6 +75,10 @@ def import_customer_csv(filepath):
     def flush():
         """Commit all buffered invoices for the current customer block."""
         nonlocal pending_invoices
+        if current_customer is None:
+            pending_invoices = {}
+            return
+
         for invoice_number, data in pending_invoices.items():
             invoice, created = Invoice.objects.update_or_create(
                 invoice_number=invoice_number,
@@ -118,6 +123,17 @@ def import_customer_csv(filepath):
             invoice.total = invoice_total
             invoice.balance = invoice_balance
             invoice.save()
+
+        # QuickBooks only lists open items, so an invoice drops out of the
+        # export as soon as it is settled. Without this sweep those paid
+        # invoices stay in the database forever and keep inflating the
+        # detail page's per-bill balances. Anything in the export's block
+        # for this customer is authoritative; everything else is stale.
+        stale = Invoice.objects.filter(customer=current_customer).exclude(
+            invoice_number__in=pending_invoices
+        )
+        result["deleted_invoices"] += stale.count()
+        stale.delete()
 
         pending_invoices = {}
 

@@ -57,6 +57,8 @@ class Command(BaseCommand):
                     f"Customers: {result['customers']}, "
                     f"Invoices: {result['invoices']}, "
                     f"Items: {result['items']}, "
+                    f"Paid/closed invoices removed: "
+                    f"{result['deleted_invoices']}, "
                     f"Deleted: {result['deleted']}"
                 ),
             )
@@ -65,7 +67,10 @@ class Command(BaseCommand):
             self.stdout.write(f"Customers: {result['customers']}")
             self.stdout.write(f"Invoices: {result['invoices']}")
             self.stdout.write(f"Items: {result['items']}")
-            self.stdout.write(f"Deleted: {result['deleted']}")
+            self.stdout.write(
+                f"Paid/closed invoices removed: {result['deleted_invoices']}"
+            )
+            self.stdout.write(f"Deleted customers: {result['deleted']}")
 
         finally:
             if os.path.exists(filepath):

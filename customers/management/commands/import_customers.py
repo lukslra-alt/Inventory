@@ -28,3 +28,4 @@ class Command(BaseCommand):
         self.stdout.write(f"Customers added: {result['customers']}")
         self.stdout.write(f"Invoices added: {result['invoices']}")
         self.stdout.write(f"Items added: {result['items']}")
+        self.stdout.write(f"Paid/closed invoices removed: {result['deleted_invoices']}")
