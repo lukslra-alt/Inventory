@@ -14,17 +14,23 @@ from datetime import datetime
 from django.conf import settings
 
 
-# File ids of the shared QuickBooks export sheets on Google Drive.
-CUSTOMER_FILE_ID = "1h5FRhHggQuR4yGCSAN8C175YXhJ71_cR"
+# File ids of the shared export sheets on Google Drive.
+CUSTOMER_FILE_ID = "1oUxZoOI9PYbede8Kdr6EpBzuFziw0Pgy0atyF79K7i8"
 
-INVENTORY_FILE_ID = "10tJtiUUP96gAYDICu34FCZpQWyIh4l0K"
+INVENTORY_FILE_ID = "175q7kE9L1c0HNqrkMfZ7cP0OqK4ySP-SB6PmFz-xtj4"
 
+# The customer source is a native Google Sheet, so use the Sheets CSV
+# export endpoint instead of the Drive download endpoint.
 CUSTOMER_CSV_URL = (
-    f"https://drive.google.com/uc?export=download&id={CUSTOMER_FILE_ID}"
+    f"https://docs.google.com/spreadsheets/d/{CUSTOMER_FILE_ID}"
+    "/export?format=csv"
 )
 
+# The inventory source is a native Google Sheet. Export its first tab as
+# CSV; the stock ageing layout is detected by the parser.
 INVENTORY_CSV_URL = (
-    f"https://drive.google.com/uc?export=download&id={INVENTORY_FILE_ID}"
+    f"https://docs.google.com/spreadsheets/d/{INVENTORY_FILE_ID}"
+    "/export?format=csv"
 )
 
 TEMP_FOLDER = os.path.join(settings.BASE_DIR, "temp")
@@ -48,6 +54,23 @@ def _download(url, prefix, extension):
 
     try:
         response = requests.get(url, timeout=30)
+
+        # Google returns a sign-in page instead of CSV when a shared sheet
+        # is not public. Fail early with a useful message rather than
+        # saving HTML as a CSV and confusing the parser.
+        content_type = response.headers.get("content-type", "").lower()
+        if extension == "csv" and (
+            "text/html" in content_type
+            or response.content.lstrip()[:15].lower() == b"<!doctype html"
+        ):
+            return {
+                "success": False,
+                "error": (
+                    "Google Sheet is not publicly accessible. "
+                    "Share it with 'Anyone with the link' as a viewer."
+                ),
+            }
+
         response.raise_for_status()
 
         with open(filepath, "wb") as file:
@@ -69,7 +92,7 @@ def _download(url, prefix, extension):
 
 
 def download_customer_csv():
-    """Download and return the QuickBooks customer CSV."""
+    """Download and return the customer/bills receivable CSV."""
     return _download(CUSTOMER_CSV_URL, "customers", "csv")
 
 

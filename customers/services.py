@@ -1,4 +1,5 @@
 import csv
+from collections import defaultdict
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
@@ -23,7 +24,7 @@ def _parse_date(value):
     if not value:
         return None
     value = str(value).strip()
-    for fmt in ("%m/%d/%Y", "%d/%m/%Y", "%Y-%m-%d"):
+    for fmt in ("%m/%d/%Y", "%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d"):
         try:
             return datetime.strptime(value, fmt).date()
         except ValueError:
@@ -37,20 +38,47 @@ def _cell(row, index):
     return ""
 
 
+def _clean_ref(value):
+    """Return a bill reference without the Tally asterisk marker."""
+    return (value or "").strip().lstrip("*").strip()
+
+
+def _is_receivables_export(rows):
+    """
+    Detect the Tally-style Bills Receivable layout.
+
+    Such files carry a header row like:
+        Account, Dated, Type, Ref. No., Ref. Amt., Pending Amt., ...
+    """
+    for row in rows:
+        if len(row) < 6:
+            continue
+        cells = [(cell or "").strip().lower() for cell in row[:6]]
+        if (
+            cells[0] == "account"
+            and cells[3] == "ref. no."
+            and cells[5].startswith("pending")
+        ):
+            return True
+    return False
+
+
 @transaction.atomic
 def import_customer_csv(filepath):
     """
-    Parses a QuickBooks-style customer export CSV and upserts
-    Customer, Invoice and InvoiceItem records.
+    Import a customer/bill export and upsert Customer, Invoice and
+    InvoiceItem records.
 
-    The CSV is treated as the full source of truth: any customer in the
-    database that is not present in the file is hard-deleted together with
-    its invoices and line items.
+    Two layouts are supported and detected automatically:
 
-    Expected row shapes:
-        <Customer Name>,,,,,,,,                -> starts a customer block
-        ,Invoice,<date>,<num>,<item>,<balance>,<qty>,<price>,<amount>,
-        Total <Customer Name>,,...,<qty>,,<total>,<total>
+    1. QuickBooks customer export, with customer blocks and item lines.
+    2. Tally-style Bills Receivable export, with one row per bill:
+           Account,Dated,Type,Ref. No.,Ref. Amt.,Pending Amt.,...
+       These files have no item detail, so each bill is stored with a
+       single summary line.
+
+    The file is treated as the full source of truth: customers and
+    invoices not present in it are removed.
     """
     result = {
         "customers": 0,
@@ -60,6 +88,19 @@ def import_customer_csv(filepath):
         "deleted_invoices": 0,
     }
 
+    with open(filepath, newline="", encoding="utf-8-sig") as handle:
+        rows = list(csv.reader(handle))
+
+    if _is_receivables_export(rows):
+        _import_receivables_rows(rows, result)
+    else:
+        _import_quickbooks_rows(rows, result)
+
+    return result
+
+
+def _import_quickbooks_rows(rows, result):
+    """Import a QuickBooks customer export (customer blocks + items)."""
     current_customer = None
     # Names of every customer block seen in the file. Used at the end to
     # delete customers that no longer exist in the export.
@@ -67,10 +108,6 @@ def import_customer_csv(filepath):
     # Buffer invoices per customer block; flushed when the next customer
     # name appears or at EOF. invoice_number -> {customer, date, rows}.
     pending_invoices = {}
-
-    with open(filepath, newline="", encoding="utf-8-sig") as handle:
-        reader = csv.reader(handle)
-        rows = list(reader)
 
     def flush():
         """Commit all buffered invoices for the current customer block."""
@@ -218,4 +255,89 @@ def import_customer_csv(filepath):
     ).delete()
     result["deleted"] = deleted_counts[1].get("customers.Customer", 0)
 
-    return result
+
+def _import_receivables_rows(rows, result):
+    """
+    Import a Tally-style Bills Receivable export.
+
+    Each data row is one open bill:
+        0 = Account, 1 = Dated, 2 = Type, 3 = Ref. No.,
+        4 = Ref. Amt., 5 = Pending Amt.
+    """
+    seen_names = set()
+    customer_totals = defaultdict(
+        lambda: {"total": Decimal("0.00"), "balance": Decimal("0.00")}
+    )
+    customer_invoices = defaultdict(set)
+
+    for row in rows:
+        account = _cell(row, 0).strip()
+
+        # Skip blank rows, the column heading row and the report footer.
+        if not account or account.lower() == "account":
+            continue
+
+        ref = _clean_ref(_cell(row, 3))
+        if not ref:
+            continue
+
+        bill_type = _cell(row, 2).strip() or "Bill"
+        bill_date = _parse_date(_cell(row, 1))
+        total = _to_decimal(_cell(row, 4))
+        balance = _to_decimal(_cell(row, 5))
+
+        customer, created = Customer.objects.get_or_create(name=account)
+        if created:
+            result["customers"] += 1
+
+        seen_names.add(account)
+        customer_invoices[account].add(ref)
+        customer_totals[account]["total"] += total
+        customer_totals[account]["balance"] += balance
+
+        invoice, created = Invoice.objects.update_or_create(
+            invoice_number=ref,
+            defaults={
+                "customer": customer,
+                "date": bill_date,
+                "total": total,
+                "balance": balance,
+            },
+        )
+        if created:
+            result["invoices"] += 1
+        else:
+            invoice.items.all().delete()
+
+        # The receivables report carries no item detail. Keep one summary
+        # line so invoice pages and PDFs still render a sensible document.
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            item=f"Bill {ref} - {bill_type}",
+            qty=Decimal("1.00"),
+            sales_price=total,
+            amount=total,
+        )
+        result["items"] += 1
+
+    # Rewrite each customer's aggregate totals from this snapshot.
+    for name, totals in customer_totals.items():
+        customer = Customer.objects.get(name=name)
+        customer.total_qty = Decimal("0.00")
+        customer.total_amount = totals["total"]
+        customer.balance = totals["balance"]
+        customer.save()
+
+    # Anything not listed for a customer is settled/invalid and is removed.
+    for name, refs in customer_invoices.items():
+        stale = Invoice.objects.filter(customer__name=name).exclude(
+            invoice_number__in=refs
+        )
+        result["deleted_invoices"] += stale.count()
+        stale.delete()
+
+    # Remove customers absent from the snapshot (cascades to their invoices).
+    deleted_counts = Customer.objects.exclude(
+        name__in=seen_names
+    ).delete()
+    result["deleted"] = deleted_counts[1].get("customers.Customer", 0)

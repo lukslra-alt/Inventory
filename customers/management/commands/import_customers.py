@@ -4,9 +4,12 @@ from customers.services import import_customer_csv
 
 
 class Command(BaseCommand):
-    """Import customers, invoices and items from a QuickBooks customer CSV."""
+    """Import customers, invoices and items from a customer/bills CSV."""
 
-    help = "Import customers, invoices and items from a QuickBooks customer CSV"
+    help = (
+        "Import customers, invoices and items from a QuickBooks customer "
+        "export or a Tally-style bills receivable CSV"
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(
