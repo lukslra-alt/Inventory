@@ -1,6 +1,7 @@
 import csv
+import re
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
@@ -63,19 +64,36 @@ def _is_receivables_export(rows):
     return False
 
 
+def _is_ageing_receivables_export(rows):
+    """Detect the Tally Ageing Receivables layout.
+
+    Header: Party Details, Closing Amt, (0-30) Days, ..., (>=151) Days.
+    """
+    for row in rows:
+        if len(row) < 2:
+            continue
+        cells = [(cell or "").strip().lower() for cell in row[:2]]
+        if cells[0] == "party details" and cells[1] == "closing amt":
+            return True
+    return False
+
+
 @transaction.atomic
 def import_customer_csv(filepath):
     """
     Import a customer/bill export and upsert Customer, Invoice and
     InvoiceItem records.
 
-    Two layouts are supported and detected automatically:
+    Three layouts are supported and detected automatically:
 
     1. QuickBooks customer export, with customer blocks and item lines.
     2. Tally-style Bills Receivable export, with one row per bill:
            Account,Dated,Type,Ref. No.,Ref. Amt.,Pending Amt.,...
        These files have no item detail, so each bill is stored with a
        single summary line.
+    3. Tally Ageing Receivables export, with one row per party and a
+       closing amount plus ageing buckets. Each party is stored as a
+       single summary invoice.
 
     The file is treated as the full source of truth: customers and
     invoices not present in it are removed.
@@ -91,7 +109,9 @@ def import_customer_csv(filepath):
     with open(filepath, newline="", encoding="utf-8-sig") as handle:
         rows = list(csv.reader(handle))
 
-    if _is_receivables_export(rows):
+    if _is_ageing_receivables_export(rows):
+        _import_ageing_receivables_rows(rows, result)
+    elif _is_receivables_export(rows):
         _import_receivables_rows(rows, result)
     else:
         _import_quickbooks_rows(rows, result)
@@ -339,5 +359,110 @@ def _import_receivables_rows(rows, result):
     # Remove customers absent from the snapshot (cascades to their invoices).
     deleted_counts = Customer.objects.exclude(
         name__in=seen_names
+    ).delete()
+    result["deleted"] = deleted_counts[1].get("customers.Customer", 0)
+
+
+def _import_ageing_receivables_rows(rows, result):
+    """Import a Tally Ageing Receivables (FIFO Basis) export.
+
+    Each data row is one party:
+        0 = Party Details, 1 = Closing Amt, 2..7 = ageing buckets.
+    The report has no bill references, so one summary invoice is stored
+    per party using the report's "as on" date.
+    """
+    header_seen = False
+    report_date = None
+    closing_by_account = {}
+
+    for row in rows:
+        account = _cell(row, 0).strip()
+
+        if report_date is None:
+            for cell in row:
+                match = re.search(r"as on\s*:\s*(.+)", cell or "", re.I)
+                if match:
+                    report_date = _parse_date(match.group(1).strip())
+                    break
+
+        if not header_seen:
+            if (
+                account.lower() == "party details"
+                and _cell(row, 1).strip().lower() == "closing amt"
+            ):
+                header_seen = True
+            continue
+
+        if account.lower() == "totals":
+            break
+
+        if not account or account.lower() == "party details":
+            if closing_by_account:
+                break
+            continue
+
+        closing_by_account[account] = (
+            closing_by_account.get(account, Decimal("0.00"))
+            + _to_decimal(_cell(row, 1))
+        )
+
+    report_date = report_date or date.today()
+    summary_refs = {}
+
+    for index, (account, closing) in enumerate(closing_by_account.items(), 1):
+        customer, created = Customer.objects.get_or_create(
+            name=account,
+            defaults={
+                "total_qty": Decimal("0.00"),
+                "total_amount": closing,
+                "balance": closing,
+            },
+        )
+        if created:
+            result["customers"] += 1
+
+        ref = f"AGE-{report_date:%Y%m%d}-{index:04d}"
+        invoice, created = Invoice.objects.update_or_create(
+            invoice_number=ref,
+            defaults={
+                "customer": customer,
+                "date": report_date,
+                "total": closing,
+                "balance": closing,
+            },
+        )
+        if created:
+            result["invoices"] += 1
+        else:
+            invoice.items.all().delete()
+
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            item=f"Ageing closing balance as on {report_date:%d/%m/%Y}",
+            qty=Decimal("1.00"),
+            sales_price=closing,
+            amount=closing,
+        )
+        result["items"] += 1
+
+        summary_refs.setdefault(account, set()).add(ref)
+
+    for account, closing in closing_by_account.items():
+        customer = Customer.objects.get(name=account)
+        customer.total_qty = Decimal("0.00")
+        customer.total_amount = closing
+        customer.balance = closing
+        customer.save()
+
+    # Bills from an older source are no longer part of this snapshot.
+    for account, refs in summary_refs.items():
+        stale = Invoice.objects.filter(customer__name=account).exclude(
+            invoice_number__in=refs
+        )
+        result["deleted_invoices"] += stale.count()
+        stale.delete()
+
+    deleted_counts = Customer.objects.exclude(
+        name__in=closing_by_account.keys()
     ).delete()
     result["deleted"] = deleted_counts[1].get("customers.Customer", 0)
