@@ -16,18 +16,6 @@ urlpatterns = [
     ),
 
     path(
-        "invoice/<str:invoice_number>/",
-        views.invoice_view,
-        name="invoice_view"
-    ),
-
-    path(
-        "invoice/<str:invoice_number>/pdf/",
-        views.invoice_pdf_view,
-        name="invoice_pdf"
-    ),
-
-    path(
         "outstanding/pdf/",
         views.outstanding_pdf_view,
         name="outstanding_pdf"

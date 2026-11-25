@@ -1,4 +1,4 @@
-const CACHE_NAME = "inventorypro-v25";
+const CACHE_NAME = "inventorypro-v26";
 const OFFLINE_FALLBACK = "/static/offline.html";
 const FILES_TO_CACHE = [
     "/static/offline.html",
@@ -12,9 +12,7 @@ const FILES_TO_CACHE = [
     "/static/inventory/network.js",
     "/static/inventory/js/bootstrap.bundle.min.js",
     "/static/inventory/js/dashboard.js",
-    "/static/inventory/js/search.js",
-    "/static/inventory/js/pdfjs/pdf.min.js",
-    "/static/inventory/js/pdfjs/pdf.worker.min.js"
+    "/static/inventory/js/search.js"
 ];
 
 // iOS/WebKit rejects any response handed to event.respondWith() (or stored with

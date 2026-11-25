@@ -57,7 +57,7 @@ class StockAgeingParser:
             if self._text(cells[2]).lower() == "totals":
                 break
 
-            qty = max(self._number(cells[1]), Decimal("0.00")).quantize(
+            qty = self._number(cells[1]).quantize(
                 Decimal("0.01"),
                 rounding=ROUND_HALF_EVEN,
             )

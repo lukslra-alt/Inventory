@@ -164,7 +164,7 @@ def _import_quickbooks_rows(rows, result):
         # QuickBooks only lists open items, so an invoice drops out of the
         # export as soon as it is settled. Without this sweep those paid
         # invoices stay in the database forever and keep inflating the
-        # detail page's per-bill balances. Anything in the export's block
+        # customer's outstanding balance. Anything in the export's block
         # for this customer is authoritative; everything else is stale.
         stale = Invoice.objects.filter(customer=current_customer).exclude(
             invoice_number__in=pending_invoices
@@ -310,7 +310,7 @@ def _import_receivables_rows(rows, result):
             invoice.items.all().delete()
 
         # The receivables report carries no item detail. Keep one summary
-        # line so invoice pages and PDFs still render a sensible document.
+        # line so invoice quantities and totals stay consistent.
         InvoiceItem.objects.create(
             invoice=invoice,
             item=f"Bill {ref} - {bill_type}",

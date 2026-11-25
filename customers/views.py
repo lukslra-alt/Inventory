@@ -6,8 +6,8 @@ from django.db.models import Count, Min, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 
-from customers.models import Customer, Invoice
-from customers.pdf import invoice_pdf, outstanding_summary_pdf
+from customers.models import Customer
+from customers.pdf import outstanding_summary_pdf
 
 
 @login_required
@@ -59,45 +59,13 @@ def customer_list(request):
 def customer_detail(request, pk):
     """Detail page showing a customer and their invoices, oldest first."""
     customer = get_object_or_404(Customer, pk=pk)
-    invoices = customer.invoices.prefetch_related("items").order_by("date")
+    invoices = customer.invoices.order_by("date")
 
     return render(
         request,
         "customers/customer_detail.html",
         {"customer": customer, "invoices": invoices},
     )
-
-
-@login_required
-def invoice_view(request, invoice_number):
-    """HTML detail page for a single invoice."""
-    invoice = get_object_or_404(
-        Invoice.objects.prefetch_related("items", "customer"),
-        invoice_number=invoice_number,
-    )
-
-    return render(
-        request,
-        "customers/invoice_detail.html",
-        {"invoice": invoice},
-    )
-
-
-@login_required
-def invoice_pdf_view(request, invoice_number):
-    """Stream a rendered invoice PDF for inline browser display."""
-    invoice = get_object_or_404(
-        Invoice.objects.prefetch_related("items").select_related("customer"),
-        invoice_number=invoice_number,
-    )
-
-    pdf = invoice_pdf(invoice)
-
-    response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = (
-        f'inline; filename="invoice-{invoice_number}.pdf"'
-    )
-    return response
 
 
 @login_required

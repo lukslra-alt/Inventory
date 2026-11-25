@@ -168,11 +168,6 @@ def sync_products(products):
             str(product_data["qty"])
         )
 
-        # The model forbids negative stock; Tally can report negative
-        # closing balances, which this app treats as zero available.
-        if qty < 0:
-            qty = Decimal("0.00")
-
         if product.qty != qty:
 
             product.qty = qty

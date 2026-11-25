@@ -15,7 +15,8 @@ from django.conf import settings
 
 
 # File ids of the shared export sheets on Google Drive.
-CUSTOMER_FILE_ID = "1oUxZoOI9PYbede8Kdr6EpBzuFziw0Pgy0atyF79K7i8"
+# Customers: COMP0004_BillsReceivable in the COMP0004 folder.
+CUSTOMER_FILE_ID = "1ojyVRpHhFGOsBKpoFyjv-eHPvB71LDnH7BMQMxWgUNU"
 
 INVENTORY_FILE_ID = "175q7kE9L1c0HNqrkMfZ7cP0OqK4ySP-SB6PmFz-xtj4"
 

@@ -148,20 +148,6 @@
 
 </div>
 
-<!-- Invoice PDF preview modal -->
-<div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-fullscreen">
-        <div class="modal-content">
-            <div class="modal-header py-2">
-                <h5 class="modal-title" id="pdfModalLabel">Invoice PDF</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-0" style="overflow: auto; -webkit-overflow-scrolling: touch;">
-                <div id="pdfContainer" class="p-2"></div>
-            </div>
-        </div>
-    </div>
-</div>
     <!-- Progressive Web App Service Worker Registration -->
     <script>
         if ("serviceWorker" in navigator) {
@@ -203,88 +189,6 @@
     <!-- Custom dependent application scripts load absolute last -->
     <script src="{% static 'inventory/js/dashboard.js' %}"></script>
     <script src="{% static 'inventory/js/search.js' %}"></script>
-    <script>
-        // Load PDF.js on demand (lazy) so it isn't fetched on every page.
-        function loadPdfJs() {
-            return new Promise(function (resolve, reject) {
-                if (window.pdfjsLib) {
-                    resolve();
-                    return;
-                }
-                const script = document.createElement("script");
-                script.src = "{% static 'inventory/js/pdfjs/pdf.min.js' %}";
-                script.onload = function () {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc =
-                        "{% static 'inventory/js/pdfjs/pdf.worker.min.js' %}";
-                    resolve();
-                };
-                script.onerror = reject;
-                document.head.appendChild(script);
-            });
-        }
-
-        // Render the invoice PDF fit-to-width so it fills the screen with
-        // correct proportions (the iOS iframe PDF viewer stretches instead).
-        function openPdf(url) {
-            const modalEl = document.getElementById("pdfModal");
-            const container = document.getElementById("pdfContainer");
-            if (!modalEl || !container || !window.bootstrap) return false;
-
-            container.innerHTML = '<div class="text-center text-muted p-4">Loading PDF...</div>';
-            bootstrap.Modal.getOrCreateInstance(modalEl).show();
-
-            loadPdfJs()
-                .then(function () {
-                    return fetch(url);
-                })
-                .then(function (response) {
-                    if (!response.ok) throw new Error("PDF fetch failed");
-                    return response.arrayBuffer();
-                })
-                .then(function (data) {
-                    return pdfjsLib.getDocument({ data: data }).promise;
-                })
-                .then(function (doc) {
-                    container.innerHTML = "";
-                    const width = Math.max(container.clientWidth - 16, 200);
-                    // Render at device pixel ratio so pages are sharp on
-                    // high-DPI (Retina) screens while displaying at logical width.
-                    const ratio = Math.min(window.devicePixelRatio || 1, 3);
-                    const tasks = [];
-                    for (let i = 1; i <= doc.numPages; i++) {
-                        tasks.push(doc.getPage(i).then(function (page) {
-                            const viewport = page.getViewport({ scale: 1 });
-                            const scale = (width / viewport.width) * ratio;
-                            const scaled = page.getViewport({ scale: scale });
-                            const canvas = document.createElement("canvas");
-                            canvas.width = scaled.width;
-                            canvas.height = scaled.height;
-                            canvas.style.width = "100%";
-                            canvas.style.height = "auto";
-                            canvas.className = "d-block mx-auto mb-3";
-                            container.appendChild(canvas);
-                            return page.render({
-                                canvasContext: canvas.getContext("2d"),
-                                viewport: scaled
-                            }).promise;
-                        }));
-                    }
-                    return Promise.all(tasks);
-                })
-                .catch(function (error) {
-                    console.error("PDF load error:", error);
-                    container.innerHTML =
-                        '<div class="alert alert-danger m-3">Could not load the PDF.</div>';
-                });
-
-            return false;
-        }
-        document.addEventListener("hidden.bs.modal", function (e) {
-            if (e.target && e.target.id === "pdfModal") {
-                document.getElementById("pdfContainer").innerHTML = "";
-            }
-        });
-    </script>
 </body>
 
 </html>
