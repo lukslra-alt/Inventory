@@ -15,10 +15,4 @@ urlpatterns = [
         name="customer_detail"
     ),
 
-    path(
-        "outstanding/pdf/",
-        views.outstanding_pdf_view,
-        name="outstanding_pdf"
-    ),
-
 ]
