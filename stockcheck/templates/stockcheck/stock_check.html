@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Check - InventoryPro{% endblock %}
+
+{% block content %}
+
+<style>
+    .stock-check-qty {
+        max-width: 140px;
+    }
+    .stock-check-item {
+        max-width: 260px;
+        overflow-wrap: anywhere;
+    }
+</style>
+
+<h1 class="mb-1">Random Stock Check</h1>
+<p class="text-muted mb-3">
+    Count up to {{ batch_size }} random products per batch. Counted items are
+    never selected again until the history is reset. Leave a quantity blank to
+    send that item back to the queue.
+</p>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <span class="badge bg-primary">Batch: {{ batch|length }}</span>
+    <span class="badge bg-success">Counted so far: {{ counted_total }}</span>
+    <span class="badge bg-secondary">Excluded: {{ excluded_total }}</span>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <form method="post" action="{% url 'stock_check' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="new_batch">
+        <button type="submit" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-shuffle me-1"></i> New random batch
+        </button>
+    </form>
+
+    <form method="post" action="{% url 'stock_check_reset' %}"
+          onsubmit="return confirm('Clear all counted records? Those products will be eligible again.');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset counted history
+        </button>
+    </form>
+</div>
+
+{% if batch %}
+<form method="post" action="{% url 'stock_check' %}">
+    {% csrf_token %}
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Product</th>
+                    <th scope="col">Item code</th>
+                    <th scope="col" class="text-end">System qty</th>
+                    <th scope="col">Counted qty</th>
+                    <th scope="col" class="text-center">No need to check</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in batch %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td class="stock-check-item">
+                        <strong>{{ product.product_name }}</strong>
+                        {% if product.hierarchy_path %}
+                        <br><small class="text-muted">{{ product.hierarchy_path }}</small>
+                        {% endif %}
+                    </td>
+                    <td><code>{{ product.item }}</code></td>
+                    <td class="text-end">{{ product.qty }}</td>
+                    <td>
+                        <input type="number" step="0.01" min="0"
+                               class="form-control form-control-sm stock-check-qty"
+                               name="qty_{{ forloop.counter0 }}"
+                               aria-label="Counted quantity for {{ product.product_name }}"
+                               placeholder="{{ product.qty }}">
+                    </td>
+                    <td class="text-center">
+                        <input class="form-check-input" type="checkbox"
+                               name="skip_{{ forloop.counter0 }}"
+                               aria-label="No need to check {{ product.product_name }}">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check2-circle me-1"></i> Save counts
+    </button>
+    <span class="text-muted ms-2 small">
+        Blank quantities return to the queue. Tick “No need to check” to skip
+        that product permanently.
+    </span>
+</form>
+{% else %}
+<div class="alert alert-info">
+    No products are available for checking. Reset the counted history or
+    restore an excluded product below.
+</div>
+{% endif %}
+
+<hr class="my-4">
+
+<h2 class="h5">Excluded from checks
+    <span class="badge bg-secondary">{{ excluded_total }}</span>
+</h2>
+<p class="text-muted small">
+    These products were marked “No need to check”. Restore one to make it
+    eligible for future random batches.
+</p>
+
+{% if excluded_page %}
+<div class="table-responsive">
+    <table class="table table-sm table-striped align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>Product</th>
+                <th>Item code</th>
+                <th class="text-end">System qty</th>
+                <th class="text-end">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in excluded_page %}
+            <tr>
+                <td class="stock-check-item">{{ product.product_name }}</td>
+                <td><code>{{ product.item }}</code></td>
+                <td class="text-end">{{ product.qty }}</td>
+                <td class="text-end">
+                    <form method="post" action="{% url 'stock_check_restore' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="item" value="{{ product.item }}">
+                        <button type="submit" class="btn btn-sm btn-outline-success">
+                            Restore
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if excluded_page.has_previous or excluded_page.has_next %}
+<nav aria-label="Excluded products pages">
+    <ul class="pagination pagination-sm">
+        {% if excluded_page.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?excluded_page={{ excluded_page.previous_page_number }}">Previous</a>
+        </li>
+        {% endif %}
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ excluded_page.number }} of {{ excluded_page.paginator.num_pages }}</span>
+        </li>
+        {% if excluded_page.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?excluded_page={{ excluded_page.next_page_number }}">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% else %}
+<p class="text-muted">No products are excluded.</p>
+{% endif %}
+
+{% endblock %}

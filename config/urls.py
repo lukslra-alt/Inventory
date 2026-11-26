@@ -47,6 +47,8 @@ urlpatterns = [
 
     path("usermanage/", include("usermanage.urls")),
 
+    path("stock-check/", include("stockcheck.urls")),
+
 ]
 
 if settings.DEBUG:

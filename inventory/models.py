@@ -115,6 +115,12 @@ class Product(models.Model):
         db_index=True,
     )
 
+    # Marked by staff as "no need to check" in random stock checks.
+    exclude_from_stock_check = models.BooleanField(
+        default=False,
+        db_index=True,
+    )
+
     updated_at = models.DateTimeField(
         auto_now=True,
     )

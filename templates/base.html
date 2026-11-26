@@ -79,6 +79,11 @@
         <a class="navbar-brand" href="{% url 'customer_list' %}">
             👥Customers
         </a>
+        {% if request.user.is_staff %}
+        <a class="navbar-brand" href="{% url 'stock_check' %}">
+            🔍Stock Check
+        </a>
+        {% endif %}
         {% if request.user.is_superuser %}
         <a class="navbar-brand" href="{% url 'usermanage:user_list' %}">
             👤Users

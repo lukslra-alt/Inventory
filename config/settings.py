@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "pricelist",
     "customers",
     "usermanage",
+    "stockcheck",
 ]
 
 MIDDLEWARE = [
